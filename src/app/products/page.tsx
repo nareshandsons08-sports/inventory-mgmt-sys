@@ -1,40 +1,66 @@
-import { Filter, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { getProductsPaginated } from "@/app/actions/product"
+import {
+    getDistinctValues,
+    getProductsPaginated,
+    type ProductFilters as ProductFiltersType,
+} from "@/app/actions/product"
 import { ProductActions } from "@/components/product-actions"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import { SearchInput } from "@/components/search-input"
 import { Pagination } from "@/components/pagination"
+import { ProductFilters } from "@/components/product-filters"
 
-export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
-    const { q, page } = await searchParams
+export default async function ProductsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{
+        q?: string
+        page?: string
+        categories?: string
+        brands?: string
+        minPrice?: string
+        maxPrice?: string
+        inStock?: string
+    }>
+}) {
+    const { q, page, categories, brands, minPrice, maxPrice, inStock } = await searchParams
     const currentPage = Number(page) || 1
-    const { products, metadata } = await getProductsPaginated(q, currentPage)
+
+    const filters: ProductFiltersType = {
+        categories: categories ? categories.split(",") : undefined,
+        brands: brands ? brands.split(",") : undefined,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        inStock: inStock === "true",
+    }
+
+    const [{ products, metadata }, distinctValues] = await Promise.all([
+        getProductsPaginated(q, currentPage, 10, filters),
+        getDistinctValues(),
+    ])
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Products</h1>
                 <Link href="/products/new">
-                    <Button className="gap-2">
+                    <Button className="gap-2 w-full sm:w-auto">
                         <Plus className="h-4 w-4" />
                         Add Product
                     </Button>
                 </Link>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <SearchInput />
-                <Button variant="outline" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filter
-                </Button>
+                <ProductFilters categories={distinctValues.categories} brands={distinctValues.brands} />
             </div>
 
-            <div className="rounded-md border bg-card">
+            <div className="rounded-md border bg-card overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>

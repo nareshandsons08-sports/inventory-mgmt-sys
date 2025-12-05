@@ -92,7 +92,7 @@ export function ProductForm({ initialData, action, title, description, submitLab
                             <CardDescription>{description}</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <div className="flex items-center gap-2">
                                         <Label htmlFor="sku">SKU</Label>
@@ -155,7 +155,7 @@ export function ProductForm({ initialData, action, title, description, submitLab
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <div className="flex items-center gap-2">
                                         <Label htmlFor="brand">Brand</Label>
@@ -196,7 +196,7 @@ export function ProductForm({ initialData, action, title, description, submitLab
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <div className="flex items-center gap-2">
                                         <Label htmlFor="costPrice">Cost Price</Label>
@@ -243,7 +243,7 @@ export function ProductForm({ initialData, action, title, description, submitLab
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <div className="flex items-center gap-2">
                                         <Label htmlFor="stockQty">Initial Stock</Label>

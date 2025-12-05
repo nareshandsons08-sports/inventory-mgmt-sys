@@ -1,5 +1,6 @@
 "use server"
 
+import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
@@ -168,24 +169,52 @@ export async function getProducts(query?: string): Promise<Product[]> {
     return serializePrisma(products)
 }
 
+export interface ProductFilters {
+    categories?: string[]
+    brands?: string[]
+    minPrice?: number
+    maxPrice?: number
+    inStock?: boolean
+}
+
 export async function getProductsPaginated(
     query?: string,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    filters?: ProductFilters
 ): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
     const skip = (page - 1) * limit
 
-    const where = {
+    const where: Prisma.ProductWhereInput = {
         isArchived: false,
-        ...(query
-            ? {
-                  OR: [
-                      { name: { contains: query, mode: "insensitive" as const } },
-                      { sku: { contains: query, mode: "insensitive" as const } },
-                      { brand: { contains: query, mode: "insensitive" as const } },
-                  ],
-              }
-            : {}),
+    }
+
+    // Search query
+    if (query) {
+        where.OR = [
+            { name: { contains: query, mode: "insensitive" as const } },
+            { sku: { contains: query, mode: "insensitive" as const } },
+            { brand: { contains: query, mode: "insensitive" as const } },
+        ]
+    }
+
+    // Filters
+    if (filters?.categories?.length) {
+        where.category = { in: filters.categories }
+    }
+
+    if (filters?.brands?.length) {
+        where.brand = { in: filters.brands }
+    }
+
+    if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
+        where.salePrice = {}
+        if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice
+        if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice
+    }
+
+    if (filters?.inStock) {
+        where.stockQty = { gt: 0 }
     }
 
     const [products, total] = await Promise.all([
@@ -205,6 +234,26 @@ export async function getProductsPaginated(
             page,
             totalPages: Math.ceil(total / limit),
         },
+    }
+}
+
+export async function getDistinctValues() {
+    const [categories, brands] = await Promise.all([
+        prisma.product.findMany({
+            where: { isArchived: false, category: { not: null } },
+            select: { category: true },
+            distinct: ["category"],
+        }),
+        prisma.product.findMany({
+            where: { isArchived: false, brand: { not: null } },
+            select: { brand: true },
+            distinct: ["brand"],
+        }),
+    ])
+
+    return {
+        categories: categories.map((c) => c.category).filter(Boolean) as string[],
+        brands: brands.map((b) => b.brand).filter(Boolean) as string[],
     }
 }
 

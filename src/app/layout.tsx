@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/Sidebar"
+import { MobileNav } from "@/components/mobile-nav"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,7 +23,10 @@ export default function RootLayout({
                     <aside className="hidden md:block">
                         <Sidebar />
                     </aside>
-                    <main className="flex-1 overflow-y-auto px-8 py-4">{children}</main>
+                    <div className="flex flex-1 flex-col overflow-hidden">
+                        <MobileNav />
+                        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+                    </div>
                 </div>
             </body>
         </html>
