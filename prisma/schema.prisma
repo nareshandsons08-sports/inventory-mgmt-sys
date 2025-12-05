@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String   // Hashed
+  role      Role     @default(CLERK)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  CLERK
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  brand       String?
+  category    String?
+  description String?
+  imageUrl    String?
+  barcode     String?  @unique
+  costPrice   Decimal
+  salePrice   Decimal
+  stockQty    Int      @default(0)
+  minStock    Int      @default(5) // Reorder threshold
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactionItems TransactionItem[]
+  adjustments      Adjustment[]
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  type      TransactionType // SALE, PURCHASE
+  date      DateTime        @default(now())
+  total     Decimal
+  userId    String
+  
+  items     TransactionItem[]
+}
+
+enum TransactionType {
+  SALE
+  PURCHASE
+}
+
+model TransactionItem {
+  id            String      @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+  price         Decimal     // Price at moment of transaction
+}
+
+model Adjustment {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String
+  reason    String
+  qtyChange Int      // Positive or negative
+  createdAt DateTime @default(now())
+}
