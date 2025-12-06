@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getProduct, updateProduct } from "@/app/actions/product"
+import { getProduct, updateProduct } from "@/actions/product"
 import { ProductForm } from "@/components/product-form"
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {

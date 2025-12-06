@@ -1,4 +1,4 @@
-import { getInventoryValuation, getLowStockReport, getSalesHistory } from "@/app/actions/reports"
+import { getInventoryValuation, getLowStockReport, getSalesHistory } from "@/actions/reports"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,9 +53,15 @@ export default async function ReportsPage() {
 
             <Tabs defaultValue="valuation" className="space-y-4">
                 <TabsList>
-                    <TabsTrigger value="valuation">Valuation Report</TabsTrigger>
-                    <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
-                    <TabsTrigger value="sales">Sales History</TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="valuation">
+                        Valuation Report
+                    </TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="low-stock">
+                        Low Stock
+                    </TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="sales">
+                        Sales History
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="valuation" className="space-y-4">

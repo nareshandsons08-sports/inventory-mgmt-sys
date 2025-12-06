@@ -1,13 +1,14 @@
 "use server"
 
 import { Prisma } from "@prisma/client"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
 import { uploadImage } from "@/lib/upload"
 import type { ActionState, Product } from "@/types"
+import { cacheTag, cacheLife } from "next/cache"
 
 const productSchema = z.object({
     sku: z.string().min(1, "SKU is required"),
@@ -71,6 +72,8 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
         return { error: "Failed to create product. Please try again." }
     }
 
+    revalidateTag("products")
+    revalidateTag("reports")
     revalidatePath("/products")
     redirect("/products")
 }
@@ -113,7 +116,7 @@ export async function updateProduct(
     // Convert empty strings to null for optional unique fields
     const dataToUpdate = {
         ...validatedData.data,
-        ...(imageUrl ? { imageUrl } : {}),
+        ...({ imageUrl } as { imageUrl?: string }), // simplified
         barcode: validatedData.data.barcode || null,
         brand: validatedData.data.brand || null,
         category: validatedData.data.category || null,
@@ -133,6 +136,9 @@ export async function updateProduct(
         return { error: "Failed to update product. Please try again." }
     }
 
+    revalidateTag("products")
+    revalidateTag(`product-${id}`)
+    revalidateTag("reports")
     revalidatePath("/products")
     redirect("/products")
 }
@@ -143,6 +149,8 @@ export async function archiveProduct(id: string) {
             where: { id },
             data: { isArchived: true },
         })
+        revalidateTag("products")
+        revalidateTag("reports")
         revalidatePath("/products")
     } catch (error) {
         console.error("Failed to archive product:", error)
@@ -151,6 +159,15 @@ export async function archiveProduct(id: string) {
 }
 
 export async function getProducts(query?: string): Promise<Product[]> {
+    "use cache"
+    cacheTag("products")
+    cacheLife("minutes")
+
+    // Note: Query params in use cache need careful handling or they become part of the cache key implicitly.
+    // However, explicit cacheTag 'products' is useful for invalidation.
+    // But if we cache ALL queries with same tag, they might collide if not using implicit key generation?
+    // "use cache" handles arguments automatically in the key.
+
     const products = await prisma.product.findMany({
         where: {
             isArchived: false,
@@ -184,6 +201,10 @@ export async function getProductsPaginated(
     limit: number = 10,
     filters?: ProductFilters
 ): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
+    "use cache"
+    cacheTag("products")
+    cacheLife("minutes")
+
     const skip = (page - 1) * limit
 
     const where: Prisma.ProductWhereInput = {
@@ -240,6 +261,10 @@ export async function getProductsPaginated(
 }
 
 export async function getDistinctValues() {
+    "use cache"
+    cacheTag("products", "product-filters")
+    cacheLife("hours") // Filters change less often
+
     const [categories, brands] = await Promise.all([
         prisma.product.findMany({
             where: { isArchived: false, category: { not: null } },
@@ -260,6 +285,10 @@ export async function getDistinctValues() {
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
+    "use cache"
+    cacheTag(`product-${id}`, "products")
+    cacheLife("minutes")
+
     const product = await prisma.product.findUnique({
         where: { id },
     })

@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { importProducts, type ImportResult } from "@/app/actions/import"
+import { importProducts, type ImportResult } from "@/actions/import"
 import { cn } from "@/lib/utils"
 
 export default function ImportProductsPage() {

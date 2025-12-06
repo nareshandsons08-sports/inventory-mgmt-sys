@@ -1,11 +1,7 @@
 import { Plus, FileDown } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import {
-    getDistinctValues,
-    getProductsPaginated,
-    type ProductFilters as ProductFiltersType,
-} from "@/app/actions/product"
+import { getDistinctValues, getProductsPaginated, type ProductFilters as ProductFiltersType } from "@/actions/product"
 import { ProductActions } from "@/components/product-actions"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
