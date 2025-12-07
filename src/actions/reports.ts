@@ -1,7 +1,8 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
 import { cacheTag, cacheLife } from "next/cache"
+import { Prisma } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
 
 import type { LowStockReportItem, ValuationReport, SalesHistoryItem } from "@/types"
 
@@ -74,8 +75,6 @@ export async function getInventoryValuation(): Promise<ValuationReport> {
         })),
     }
 }
-
-import { Prisma } from "@prisma/client"
 
 export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
     "use cache"

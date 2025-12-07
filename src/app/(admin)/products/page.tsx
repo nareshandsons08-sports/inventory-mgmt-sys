@@ -4,8 +4,7 @@ import { getDistinctValues, getProductsPaginated, type ProductFilters as Product
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/search-input"
 import { ProductFilters } from "@/components/product-filters"
-import { ProductListTable } from "@/components/product-list-table"
-
+import { ProductList } from "./_components/product-list"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 
@@ -77,7 +76,7 @@ export default async function ProductsPage({
                 <ProductFilters categories={distinctValues.categories} brands={distinctValues.brands} />
             </div>
 
-            <ProductListTable products={products} metadata={metadata} role={role} />
+            <ProductList products={products} metadata={metadata} role={role} />
         </div>
     )
 }

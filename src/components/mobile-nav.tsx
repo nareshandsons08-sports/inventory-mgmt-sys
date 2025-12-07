@@ -6,7 +6,15 @@ import { Sidebar } from "@/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
-export function MobileNav() {
+export function MobileNav({
+    user,
+}: {
+    user: {
+        name?: string | null
+        email?: string | null
+        role?: string
+    }
+}) {
     const [open, setOpen] = useState(false)
 
     return (
@@ -20,7 +28,11 @@ export function MobileNav() {
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 border-r-0 bg-transparent shadow-none w-auto">
                     {/* Render Sidebar within Sheet, passing onClose to close sheet on link click */}
-                    <Sidebar className="w-64 border-r bg-card h-full rounded-r-lg" onClose={() => setOpen(false)} />
+                    <Sidebar
+                        className="w-64 border-r bg-card h-full rounded-r-lg"
+                        onClose={() => setOpen(false)}
+                        user={user}
+                    />
                 </SheetContent>
             </Sheet>
             <div className="flex items-center gap-2 font-semibold">

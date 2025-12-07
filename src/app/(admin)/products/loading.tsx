@@ -2,6 +2,26 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function Loading() {
+    const columns = [
+        { className: "w-20", header: "w-8", cell: <Skeleton className="h-10 w-10 rounded-full" /> },
+        { header: "w-12", cell: <Skeleton className="h-4 w-16" /> },
+        { header: "w-24", cell: <Skeleton className="h-4 w-32" /> },
+        { header: "w-16", cell: <Skeleton className="h-4 w-20" /> },
+        { header: "w-16", cell: <Skeleton className="h-4 w-20" /> },
+        { className: "text-right", header: "w-12 ml-auto", cell: <Skeleton className="h-4 w-16 ml-auto" /> },
+        { className: "text-right", header: "w-12 ml-auto", cell: <Skeleton className="h-4 w-12 ml-auto" /> },
+        {
+            className: "text-right",
+            header: "w-16 ml-auto",
+            cell: (
+                <div className="flex justify-end gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                </div>
+            ),
+        },
+    ]
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -24,62 +44,21 @@ export default function Loading() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-20">
-                                <Skeleton className="h-4 w-8" />
-                            </TableHead>
-                            <TableHead>
-                                <Skeleton className="h-4 w-12" />
-                            </TableHead>
-                            <TableHead>
-                                <Skeleton className="h-4 w-24" />
-                            </TableHead>
-                            <TableHead>
-                                <Skeleton className="h-4 w-16" />
-                            </TableHead>
-                            <TableHead>
-                                <Skeleton className="h-4 w-16" />
-                            </TableHead>
-                            <TableHead className="text-right">
-                                <Skeleton className="h-4 w-12 ml-auto" />
-                            </TableHead>
-                            <TableHead className="text-right">
-                                <Skeleton className="h-4 w-12 ml-auto" />
-                            </TableHead>
-                            <TableHead className="text-right">
-                                <Skeleton className="h-4 w-16 ml-auto" />
-                            </TableHead>
+                            {columns.map((col, i) => (
+                                <TableHead key={i} className={col.className}>
+                                    <Skeleton className={`h-4 ${col.header}`} />
+                                </TableHead>
+                            ))}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {Array.from({ length: 5 }).map((_, i) => (
                             <TableRow key={i}>
-                                <TableCell>
-                                    <Skeleton className="h-10 w-10 rounded-full" />
-                                </TableCell>
-                                <TableCell>
-                                    <Skeleton className="h-4 w-16" />
-                                </TableCell>
-                                <TableCell>
-                                    <Skeleton className="h-4 w-32" />
-                                </TableCell>
-                                <TableCell>
-                                    <Skeleton className="h-4 w-20" />
-                                </TableCell>
-                                <TableCell>
-                                    <Skeleton className="h-4 w-20" />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Skeleton className="h-4 w-16 ml-auto" />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Skeleton className="h-4 w-12 ml-auto" />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <Skeleton className="h-8 w-8" />
-                                        <Skeleton className="h-8 w-8" />
-                                    </div>
-                                </TableCell>
+                                {columns.map((col, j) => (
+                                    <TableCell key={j} className={col.className}>
+                                        {col.cell}
+                                    </TableCell>
+                                ))}
                             </TableRow>
                         ))}
                     </TableBody>
