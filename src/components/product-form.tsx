@@ -1,8 +1,8 @@
 "use client"
 
-import { ArrowLeft, HelpCircle, Upload, X } from "lucide-react"
-import Link from "next/link"
-import { useActionState, useRef, useState } from "react"
+import { HelpCircle, Upload, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useActionState, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,13 +17,21 @@ interface ProductFormProps {
     title: string
     description: string
     submitLabel: string
+    isModal?: boolean
 }
 
-export function ProductForm({ initialData, action, title, description, submitLabel }: ProductFormProps) {
+export function ProductForm({ initialData, action, title, description, submitLabel, isModal }: ProductFormProps) {
     const [state, formAction, isPending] = useActionState<ActionState | null, FormData>(action, null)
     const [dragActive, setDragActive] = useState(false)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+    const router = useRouter()
+
+    useEffect(() => {
+        if (state?.success && isModal) {
+            router.back()
+        }
+    }, [state, isModal, router])
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault()
@@ -64,6 +72,7 @@ export function ProductForm({ initialData, action, title, description, submitLab
     return (
         <TooltipProvider>
             <form action={formAction}>
+                {isModal && <input type="hidden" name="skipRedirect" value="true" />}
                 {state?.error && (
                     <div className="bg-destructive/15 text-destructive px-4 py-2 rounded-md mb-4">{state.error}</div>
                 )}

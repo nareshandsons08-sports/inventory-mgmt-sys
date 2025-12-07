@@ -37,3 +37,30 @@ export async function uploadImage(file: File): Promise<string | null> {
         return null
     }
 }
+
+export async function deleteImage(imageUrl: string): Promise<boolean> {
+    if (!imageUrl) return false
+
+    try {
+        // Extract file path from URL
+        // URL format: .../storage/v1/object/public/bucketName/fileName
+        const urlParts = imageUrl.split(`/${bucketName}/`)
+        if (urlParts.length < 2) {
+            console.error("Invalid image URL format for deletion")
+            return false
+        }
+        const filePath = urlParts[1]
+
+        const { error } = await supabase.storage.from(bucketName).remove([filePath])
+
+        if (error) {
+            console.error("Supabase delete error:", error)
+            return false
+        }
+
+        return true
+    } catch (error) {
+        console.error("Error deleting file:", error)
+        return false
+    }
+}

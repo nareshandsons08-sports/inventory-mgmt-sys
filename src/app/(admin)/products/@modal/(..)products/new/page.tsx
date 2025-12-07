@@ -10,6 +10,7 @@ export default function NewProductPage() {
                 title="Add New Product"
                 description="Enter the details for the new product."
                 submitLabel="Create Product"
+                isModal
             />
         </InterceptedDialog>
     )

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
-import { uploadImage } from "@/lib/upload"
+import { uploadImage, deleteImage } from "@/lib/upload"
 import type { ActionState, Product } from "@/types"
 import { cacheTag, cacheLife } from "next/cache"
 
@@ -92,6 +92,12 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
     revalidateTag("products", "minutes")
     revalidateTag("reports", "minutes")
     revalidatePath("/products")
+
+    const skipRedirect = formData.get("skipRedirect") === "true"
+    if (skipRedirect) {
+        return { success: true }
+    }
+
     redirect("/products")
 }
 
@@ -168,6 +174,12 @@ export async function updateProduct(
     revalidateTag(`product-${id}`, "minutes")
     revalidateTag("reports", "minutes")
     revalidatePath("/products")
+
+    const skipRedirect = formData.get("skipRedirect") === "true"
+    if (skipRedirect) {
+        return { success: true }
+    }
+
     redirect("/products")
 }
 
@@ -238,6 +250,16 @@ export async function deleteProduct(id: string) {
     }
 
     try {
+        // Fetch product to get image URL
+        const product = await prisma.product.findUnique({
+            where: { id },
+            select: { imageUrl: true },
+        })
+
+        if (product?.imageUrl) {
+            await deleteImage(product.imageUrl)
+        }
+
         await prisma.product.delete({
             where: { id },
         })
@@ -255,11 +277,6 @@ export async function getProducts(query?: string): Promise<Product[]> {
     "use cache"
     cacheTag("products")
     cacheLife("minutes")
-
-    // Note: Query params in use cache need careful handling or they become part of the cache key implicitly.
-    // However, explicit cacheTag 'products' is useful for invalidation.
-    // But if we cache ALL queries with same tag, they might collide if not using implicit key generation?
-    // "use cache" handles arguments automatically in the key.
 
     const products = await prisma.product.findMany({
         where: {

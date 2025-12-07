@@ -21,6 +21,7 @@ export default async function InterceptedEditProductPage({ params }: { params: P
                 title="Edit Product"
                 description="Update the product details."
                 submitLabel="Save Changes"
+                isModal
             />
         </InterceptedDialog>
     )
