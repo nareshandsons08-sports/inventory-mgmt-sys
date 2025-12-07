@@ -4,8 +4,14 @@ import { getTransactions } from "@/actions/transaction"
 import { Button } from "@/components/ui/button"
 import { SaleList } from "./_components/sale-list"
 
-export default async function SalesPage() {
-    const sales = await getTransactions("SALE")
+interface SalesPageProps {
+    searchParams: Promise<{ page?: string }>
+}
+
+export default async function SalesPage({ searchParams }: SalesPageProps) {
+    const params = await searchParams
+    const page = Number(params.page) || 1
+    const { data: sales, metadata } = await getTransactions("SALE", page)
 
     return (
         <div className="flex flex-col gap-6">
@@ -19,7 +25,7 @@ export default async function SalesPage() {
                 </Link>
             </div>
 
-            <SaleList sales={sales} />
+            <SaleList sales={sales} metadata={metadata} />
         </div>
     )
 }

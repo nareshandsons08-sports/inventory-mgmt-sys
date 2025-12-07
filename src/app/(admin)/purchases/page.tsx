@@ -6,12 +6,18 @@ import { auth } from "@/auth"
 import { Button } from "@/components/ui/button"
 import { PurchaseList } from "./_components/purchase-list"
 
-export default async function PurchasesPage() {
+interface PurchasesPageProps {
+    searchParams: Promise<{ page?: string }>
+}
+
+export default async function PurchasesPage({ searchParams }: PurchasesPageProps) {
     const session = await auth()
     const role = session?.user?.role
     const canManage = role === "ADMIN" || role === "MANAGER"
 
-    const purchases = await getTransactions("PURCHASE")
+    const params = await searchParams
+    const page = Number(params.page) || 1
+    const { data: purchases, metadata } = await getTransactions("PURCHASE", page)
 
     return (
         <div className="flex flex-col gap-6">
@@ -27,7 +33,7 @@ export default async function PurchasesPage() {
                 )}
             </div>
 
-            <PurchaseList purchases={purchases} />
+            <PurchaseList purchases={purchases} metadata={metadata} />
         </div>
     )
 }

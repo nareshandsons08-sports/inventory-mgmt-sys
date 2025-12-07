@@ -4,13 +4,19 @@ import { auth } from "@/auth"
 import { CreateUserDialog } from "@/components/create-user-dialog"
 import { UserList } from "./_components/user-list"
 
-export default async function UsersPage() {
+interface UsersPageProps {
+    searchParams: Promise<{ page?: string }>
+}
+
+export default async function UsersPage({ searchParams }: UsersPageProps) {
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         redirect("/dashboard")
     }
 
-    const users = await getUsers()
+    const params = await searchParams
+    const page = Number(params.page) || 1
+    const { data: users, metadata } = await getUsers(page)
 
     return (
         <div className="flex flex-col gap-6">
@@ -18,7 +24,7 @@ export default async function UsersPage() {
                 <h1 className="text-3xl font-bold tracking-tight">Users</h1>
                 <CreateUserDialog />
             </div>
-            <UserList users={users} />
+            <UserList users={users} metadata={metadata} />
         </div>
     )
 }

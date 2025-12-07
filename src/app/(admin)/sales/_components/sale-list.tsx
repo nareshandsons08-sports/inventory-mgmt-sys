@@ -11,50 +11,67 @@ interface SaleWithItems extends Transaction {
 
 interface SaleListProps {
     sales: SaleWithItems[]
+    metadata: {
+        total: number
+        page: number
+        totalPages: number
+    }
 }
 
-export function SaleList({ sales }: SaleListProps) {
+import { Pagination } from "@/components/pagination"
+
+export function SaleList({ sales, metadata }: SaleListProps) {
     return (
-        <div className="rounded-md border bg-card">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead className="text-right">Total Amount</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {sales.length === 0 ? (
+        <div className="flex flex-col gap-4">
+            <div className="rounded-md border bg-card">
+                <Table>
+                    <TableHeader>
                         <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">
-                                No sales recorded.
-                            </TableCell>
+                            <TableHead>Date</TableHead>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Items</TableHead>
+                            <TableHead className="text-right">Total Amount</TableHead>
                         </TableRow>
-                    ) : (
-                        sales.map((sale) => (
-                            <TableRow key={sale.id}>
-                                <TableCell>{format(new Date(sale.date), "MMM d, yyyy HH:mm")}</TableCell>
-                                <TableCell className="font-mono text-xs">{sale.id.slice(-8)}</TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col gap-1">
-                                        {sale.items.map((item) => (
-                                            <span key={item.id} className="text-sm text-muted-foreground">
-                                                {item.product?.name || "Unknown Product"} x {item.quantity} ({" "}
-                                                {formatCurrency(Number(item.product?.salePrice))})
-                                            </span>
-                                        ))}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right font-bold">
-                                    {formatCurrency(Number(sale.total))}
+                    </TableHeader>
+                    <TableBody>
+                        {sales.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    No sales recorded.
                                 </TableCell>
                             </TableRow>
-                        ))
-                    )}
-                </TableBody>
-            </Table>
+                        ) : (
+                            sales.map((sale) => (
+                                <TableRow key={sale.id}>
+                                    <TableCell>{format(new Date(sale.date), "MMM d, yyyy HH:mm")}</TableCell>
+                                    <TableCell className="font-mono text-xs">{sale.id.slice(-8)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1">
+                                            {sale.items.map((item) => (
+                                                <span key={item.id} className="text-sm text-muted-foreground">
+                                                    {item.product?.name || "Unknown Product"} x {item.quantity} ({" "}
+                                                    {formatCurrency(Number(item.product?.salePrice))})
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-bold">
+                                        {formatCurrency(Number(sale.total))}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+            {metadata.totalPages > 1 && (
+                <Pagination
+                    totalPages={metadata.totalPages}
+                    currentPage={metadata.page}
+                    totalItems={metadata.total}
+                    pageSize={50}
+                />
+            )}
         </div>
     )
 }

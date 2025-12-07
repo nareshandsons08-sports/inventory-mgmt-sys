@@ -9,42 +9,63 @@ import type { User } from "@/types"
 
 interface UserListProps {
     users: User[]
+    metadata: {
+        total: number
+        page: number
+        totalPages: number
+    }
 }
 
-export function UserList({ users }: UserListProps) {
+import { Pagination } from "@/components/pagination"
+
+export function UserList({ users, metadata }: UserListProps) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>All Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Joined</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {users.map((user) => (
-                            <TableRow key={user.id}>
-                                <TableCell className="font-medium">{user.name}</TableCell>
-                                <TableCell>{user.email}</TableCell>
-                                <TableCell>
-                                    <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge>
-                                </TableCell>
-                                <TableCell>{user.createdAt ? formatDate(user.createdAt) : "N/A"}</TableCell>
-                                <TableCell>
-                                    <UserActions userId={user.id} />
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>All Users</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead>Joined</TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.map((user) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell className="font-medium">{user.name}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
+                                                {user.role}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{user.createdAt ? formatDate(user.createdAt) : "N/A"}</TableCell>
+                                        <TableCell>
+                                            <UserActions userId={user.id} />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
+            {metadata.totalPages > 1 && (
+                <Pagination
+                    totalPages={metadata.totalPages}
+                    currentPage={metadata.page}
+                    totalItems={metadata.total}
+                    pageSize={50}
+                />
+            )}
+        </div>
     )
 }

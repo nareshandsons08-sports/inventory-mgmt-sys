@@ -46,6 +46,10 @@ model Product {
 
   transactionItems TransactionItem[]
   adjustments      Adjustment[]
+
+  @@index([name])
+  @@index([brand])
+  @@index([category])
 }
 
 model Transaction {
@@ -57,6 +61,10 @@ model Transaction {
   user      User            @relation(fields: [userId], references: [id])
   
   items     TransactionItem[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([date])
 }
 
 enum TransactionType {
@@ -72,6 +80,9 @@ model TransactionItem {
   product       Product     @relation(fields: [productId], references: [id])
   quantity      Int
   price         Decimal     @db.Decimal(10, 2) // Price at moment of transaction
+
+  @@index([transactionId])
+  @@index([productId])
 }
 
 model Adjustment {
@@ -83,4 +94,8 @@ model Adjustment {
   reason    String
   qtyChange Int      // Positive or negative
   createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([userId])
+  @@index([createdAt])
 }

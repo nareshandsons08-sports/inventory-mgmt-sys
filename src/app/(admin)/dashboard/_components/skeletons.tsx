@@ -9,7 +9,7 @@ export function StatsCardSkeleton() {
             </CardHeader>
             <CardContent>
                 <Skeleton className="h-8 w-[120px] mb-2" />
-                <Skeleton className="h-3 w-[80px]" />
+                <Skeleton className="h-3 w-20" />
             </CardContent>
         </Card>
     )
@@ -42,7 +42,7 @@ export function RecentSalesSkeleton() {
                                 <Skeleton className="h-4 w-[150px]" />
                                 <Skeleton className="h-3 w-[100px]" />
                             </div>
-                            <Skeleton className="ml-auto h-4 w-[80px]" />
+                            <Skeleton className="ml-auto h-4 w-20" />
                         </div>
                     ))}
                 </div>

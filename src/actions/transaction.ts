@@ -103,21 +103,44 @@ import type { Transaction } from "@/types"
 
 // ... (createTransaction function)
 
-export async function getTransactions(type: "SALE" | "PURCHASE"): Promise<Transaction[]> {
+export async function getTransactions(
+    type: "SALE" | "PURCHASE",
+    page: number = 1,
+    limit: number = 50
+): Promise<{ data: Transaction[]; metadata: { total: number; page: number; totalPages: number } }> {
     "use cache"
-    cacheTag("transactions", type.toLowerCase())
+    cacheTag("transactions", type.toLowerCase(), `page-${page}`)
     cacheLife("minutes")
 
-    const transactions = await prisma.transaction.findMany({
-        where: { type },
-        include: {
-            items: {
-                include: {
-                    product: true,
+    const skip = (page - 1) * limit
+
+    const [transactions, total] = await Promise.all([
+        prisma.transaction.findMany({
+            where: { type },
+            include: {
+                items: {
+                    include: {
+                        product: true,
+                    },
                 },
             },
+            orderBy: { date: "desc" },
+            skip,
+            take: limit,
+        }),
+        prisma.transaction.count({
+            where: { type },
+        }),
+    ])
+
+    const totalPages = Math.ceil(total / limit)
+
+    return {
+        data: serializePrisma(transactions),
+        metadata: {
+            total,
+            page,
+            totalPages,
         },
-        orderBy: { date: "desc" },
-    })
-    return serializePrisma(transactions)
+    }
 }

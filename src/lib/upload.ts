@@ -2,9 +2,13 @@ import { createClient } from "@supabase/supabase-js"
 
 // Initialize Supabase client
 // We use the SERVICE_ROLE_KEY for server-side uploads to bypass RLS policies
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const bucketName = process.env.SUPABASE_BUCKET || "products"
+
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Missing Supabase environment variables")
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -16,7 +20,7 @@ export async function uploadImage(file: File): Promise<string | null> {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
         const filePath = `${fileName}`
 
-        const { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
+        const { error } = await supabase.storage.from(bucketName).upload(filePath, file, {
             cacheControl: "3600",
             upsert: false,
         })

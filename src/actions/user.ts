@@ -1,29 +1,48 @@
 "use server"
 
+import { Role } from "@prisma/client"
+import type { User } from "@prisma/client"
+import bcrypt from "bcryptjs"
+import { cacheLife, cacheTag, revalidateTag } from "next/cache"
+import { z } from "zod"
+
+import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
-import { cacheTag, cacheLife } from "next/cache"
-import { User } from "@prisma/client"
+import type { ActionState } from "@/types"
 
-export async function getUsers(): Promise<User[]> {
+export async function getUsers(
+    page: number = 1,
+    limit: number = 50
+): Promise<{ data: User[]; metadata: { total: number; page: number; totalPages: number } }> {
     "use cache"
-    cacheTag("users")
+    cacheTag("users", `page-${page}`)
     cacheLife("hours")
 
-    const users = await prisma.user.findMany({
-        orderBy: {
-            createdAt: "desc",
+    const skip = (page - 1) * limit
+
+    const [users, total] = await Promise.all([
+        prisma.user.findMany({
+            orderBy: {
+                createdAt: "desc",
+            },
+            skip,
+            take: limit,
+        }),
+        prisma.user.count(),
+    ])
+
+    const totalPages = Math.ceil(total / limit)
+
+    return {
+        data: serializePrisma(users),
+        metadata: {
+            total,
+            page,
+            totalPages,
         },
-    })
-
-    return serializePrisma(users)
+    }
 }
-
-import { revalidateTag } from "next/cache"
-import { z } from "zod"
-import bcrypt from "bcryptjs"
-import { Role } from "@prisma/client"
-import type { ActionState } from "@/types"
 
 const userSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -31,8 +50,6 @@ const userSchema = z.object({
     password: z.string().min(6, "Password must be 6+ chars"),
     role: z.nativeEnum(Role).default(Role.CLERK),
 })
-
-import { auth } from "@/auth"
 
 export async function createUser(prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const session = await auth()
