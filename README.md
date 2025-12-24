@@ -1,4 +1,4 @@
-# Sports Shop Inventory Management System (v2)
+# Sports Shop Inventory Management System
 
 A comprehensive inventory management solution built with modern web technologies, designed to streamline operations for sports retail businesses.
 
