@@ -1,9 +1,11 @@
 "use client"
 
 import { format } from "date-fns"
-import { Search } from "lucide-react"
+import { Eye, Search } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
+import { TransactionDetailsDialog } from "@/components/transaction-details-dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
@@ -27,6 +29,8 @@ import { Pagination } from "@/components/pagination"
 export function SaleList({ sales, metadata }: SaleListProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null)
+    const [detailsOpen, setDetailsOpen] = useState(false)
     const [search, setSearch] = useState(searchParams.get("search") || "")
 
     // Debounce search update
@@ -70,18 +74,26 @@ export function SaleList({ sales, metadata }: SaleListProps) {
                             <TableHead>Customer</TableHead>
                             <TableHead>Items</TableHead>
                             <TableHead className="text-right">Total Amount</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {sales.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
+                                <TableCell colSpan={6} className="h-24 text-center">
                                     No sales found.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             sales.map((sale) => (
-                                <TableRow key={sale.id}>
+                                <TableRow
+                                    key={sale.id}
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => {
+                                        setSelectedSale(sale)
+                                        setDetailsOpen(true)
+                                    }}
+                                >
                                     <TableCell>{format(new Date(sale.date), "MMM d, yyyy HH:mm")}</TableCell>
                                     <TableCell className="font-mono text-xs text-muted-foreground" title={sale.id}>
                                         {sale.id.slice(0, 8)}...
@@ -94,17 +106,15 @@ export function SaleList({ sales, metadata }: SaleListProps) {
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            {sale.items.map((item) => (
-                                                <span key={item.id} className="text-sm text-muted-foreground">
-                                                    {item.product?.name || "Unknown Product"} x {item.quantity}{" "}
-                                                    {item.quantity > 1 && `(${formatCurrency(Number(item.price))})`}
-                                                </span>
-                                            ))}
-                                        </div>
+                                        <div className="text-sm text-muted-foreground">{sale.items.length} items</div>
                                     </TableCell>
                                     <TableCell className="text-right font-bold">
                                         {formatCurrency(Number(sale.total))}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -120,6 +130,8 @@ export function SaleList({ sales, metadata }: SaleListProps) {
                     pageSize={50}
                 />
             )}
+
+            <TransactionDetailsDialog transaction={selectedSale} open={detailsOpen} onOpenChange={setDetailsOpen} />
         </div>
     )
 }

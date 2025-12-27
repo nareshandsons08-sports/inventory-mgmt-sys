@@ -1,5 +1,6 @@
 "use client"
 
+import type { Supplier } from "@prisma/client"
 import { HelpCircle, Upload, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useActionState, useEffect, useRef, useState } from "react"
@@ -7,11 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { ActionState, Product } from "@/types"
-import type { Supplier } from "@prisma/client"
 
 interface ProductFormProps {
     initialData?: Product

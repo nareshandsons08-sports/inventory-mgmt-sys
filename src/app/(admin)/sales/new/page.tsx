@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, IndianRupee, Percent, Plus, ScanBarcode, Trash, User, Search } from "lucide-react"
+import { ArrowLeft, IndianRupee, Percent, Plus, ScanBarcode, Trash, User } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"

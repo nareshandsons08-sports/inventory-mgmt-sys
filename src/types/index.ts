@@ -29,6 +29,7 @@ export interface TransactionItem {
     productId: string
     quantity: number
     price: number
+    discount: number
     product?: Product
 }
 
@@ -53,7 +54,7 @@ export interface Transaction {
     customerId?: string | null
     customer?: Customer | null
     supplierId?: string | null
-    supplier?: { id: string; name: string } | null
+    supplier?: Supplier | null
 }
 
 export interface Customer {

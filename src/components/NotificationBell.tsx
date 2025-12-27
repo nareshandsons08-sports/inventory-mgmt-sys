@@ -22,8 +22,8 @@ export function NotificationBell({ role }: { role?: string }) {
         const loadInterval = () => {
             const stored = localStorage.getItem("notification-interval")
             if (stored) {
-                const val = parseInt(stored)
-                if (!isNaN(val) && val > 0) {
+                const val = parseInt(stored, 10)
+                if (!Number.isNaN(val) && val > 0) {
                     setIntervalSeconds(val)
                 }
             }

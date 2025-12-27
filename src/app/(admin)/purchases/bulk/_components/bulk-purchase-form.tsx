@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { createTransaction } from "@/actions/transaction"
 import { getProducts } from "@/actions/product"
+import { createTransaction } from "@/actions/transaction"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { Product, Supplier } from "@/types"
@@ -42,7 +42,7 @@ export function BulkPurchaseForm({ suppliers }: BulkPurchaseFormProps) {
                 initialCosts[p.id] = Number(p.costPrice)
             })
             setCosts(initialCosts)
-        } catch (error) {
+        } catch {
             toast.error("Failed to load products")
         } finally {
             setLoadingProducts(false)
@@ -90,7 +90,7 @@ export function BulkPurchaseForm({ suppliers }: BulkPurchaseFormProps) {
                 setSelectedSupplierId("")
                 setProducts([])
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to process transaction")
         } finally {
             setSubmitting(false)
@@ -112,7 +112,7 @@ export function BulkPurchaseForm({ suppliers }: BulkPurchaseFormProps) {
                 </CardHeader>
                 <CardContent>
                     <Select value={selectedSupplierId} onValueChange={handleSupplierChange}>
-                        <SelectTrigger className="w-full md:w-[300px]">
+                        <SelectTrigger className="w-full md:w-75">
                             <SelectValue placeholder="Select a supplier..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -144,8 +144,8 @@ export function BulkPurchaseForm({ suppliers }: BulkPurchaseFormProps) {
                                             <TableRow>
                                                 <TableHead>Product Name</TableHead>
                                                 <TableHead>Current Stock</TableHead>
-                                                <TableHead className="w-[150px]">Restock Qty</TableHead>
-                                                <TableHead className="w-[150px]">Unit Cost</TableHead>
+                                                <TableHead className="w-37.5">Restock Qty</TableHead>
+                                                <TableHead className="w-37.5">Unit Cost</TableHead>
                                                 <TableHead className="text-right">Total</TableHead>
                                             </TableRow>
                                         </TableHeader>
