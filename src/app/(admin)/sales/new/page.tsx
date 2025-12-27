@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
 
 export default function NewSalePage() {
@@ -366,14 +366,26 @@ export default function NewSalePage() {
                                         <div className="flex items-center justify-between gap-2 mt-1">
                                             <Label className="text-xs text-muted-foreground w-12">Discount</Label>
                                             <div className="flex flex-1 items-center gap-2">
-                                                <Input
-                                                    type="number"
-                                                    className="h-7 px-2 text-right text-xs"
-                                                    placeholder="0"
-                                                    min="0"
-                                                    value={item.discountInput > 0 ? item.discountInput : ""}
-                                                    onChange={(e) => updateDiscount(index, Number(e.target.value))}
-                                                />
+                                                <div className="relative flex-1">
+                                                    <span
+                                                        style={{ top: "8px" }}
+                                                        className="absolute top-2 left-2 text-[10px] text-muted-foreground font-medium flex items-center h-4 pointer-events-none"
+                                                    >
+                                                        {item.discountType === "percentage" ? (
+                                                            <Percent className="h-3 w-3" />
+                                                        ) : (
+                                                            <IndianRupee className="h-3 w-3" />
+                                                        )}
+                                                    </span>
+                                                    <Input
+                                                        type="number"
+                                                        className="h-7 pl-6 pr-2 text-right text-xs"
+                                                        placeholder="0"
+                                                        min="0"
+                                                        value={item.discountInput > 0 ? item.discountInput : ""}
+                                                        onChange={(e) => updateDiscount(index, Number(e.target.value))}
+                                                    />
+                                                </div>
                                                 <ToggleGroup
                                                     type="single"
                                                     value={item.discountType}
@@ -385,19 +397,27 @@ export default function NewSalePage() {
                                                                 val as "amount" | "percentage"
                                                             )
                                                     }}
-                                                    className="h-7 border rounded-md"
+                                                    className="h-7.5 border rounded-md p-0.5 gap-0.5"
                                                 >
                                                     <ToggleGroupItem
                                                         value="amount"
                                                         size="sm"
-                                                        className="h-full px-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                                                        className={cn(
+                                                            "h-full px-2 rounded-sm hover:bg-muted transition-colors",
+                                                            item.discountType === "amount" &&
+                                                                "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                        )}
                                                     >
                                                         <IndianRupee className="h-3 w-3" />
                                                     </ToggleGroupItem>
                                                     <ToggleGroupItem
                                                         value="percentage"
                                                         size="sm"
-                                                        className="h-full px-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                                                        className={cn(
+                                                            "h-full px-2 rounded-sm hover:bg-muted transition-colors",
+                                                            item.discountType === "percentage" &&
+                                                                "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                        )}
                                                     >
                                                         <Percent className="h-3 w-3" />
                                                     </ToggleGroupItem>

@@ -74,7 +74,7 @@ export function SaleList({ sales, metadata }: SaleListProps) {
                             <TableHead>Customer</TableHead>
                             <TableHead>Items</TableHead>
                             <TableHead className="text-right">Total Amount</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead className="w-12.5"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
