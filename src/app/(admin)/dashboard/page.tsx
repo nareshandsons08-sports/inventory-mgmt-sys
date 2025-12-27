@@ -1,11 +1,17 @@
-import { Suspense } from "react"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
+
 import { auth } from "@/auth"
 import { InventoryCards } from "./_components/inventory-cards"
-import { SalesVolumeCard } from "./_components/sales-volume-card"
 import { OverviewChartCard } from "./_components/overview-chart-card"
 import { RecentSalesCard } from "./_components/recent-sales-card"
-import { StatsCardSkeleton, OverviewChartSkeleton, RecentSalesSkeleton } from "./_components/skeletons"
+import { SalesVolumeCard } from "./_components/sales-volume-card"
+import { OverviewChartSkeleton, RecentSalesSkeleton, StatsCardSkeleton } from "./_components/skeletons"
+
+export const metadata: Metadata = {
+    title: "Dashboard",
+}
 
 export default async function DashboardPage() {
     const session = await auth()

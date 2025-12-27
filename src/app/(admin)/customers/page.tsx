@@ -1,12 +1,18 @@
 import { Plus } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
+
 import { getCustomers } from "@/actions/customer"
 import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { CustomerList } from "./_components/customer-list"
+
+export const metadata: Metadata = {
+    title: "Customers",
+}
 
 export default async function CustomersPage({
     searchParams,

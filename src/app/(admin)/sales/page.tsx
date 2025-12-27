@@ -1,10 +1,15 @@
 import { Plus } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
 
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { SaleListWrapper } from "./_components/sale-list-wrapper"
+
+export const metadata: Metadata = {
+    title: "Sales",
+}
 
 interface SalesPageProps {
     searchParams: Promise<{ page?: string; search?: string }>

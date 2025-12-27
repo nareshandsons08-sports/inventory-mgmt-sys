@@ -1,5 +1,10 @@
+import type { Metadata } from "next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CustomerForm } from "../_components/customer-form"
+
+export const metadata: Metadata = {
+    title: "New Customer",
+}
 
 export default function NewCustomerPage() {
     return (

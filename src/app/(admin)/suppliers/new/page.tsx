@@ -1,5 +1,10 @@
+import type { Metadata } from "next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SupplierForm } from "../_components/supplier-form"
+
+export const metadata: Metadata = {
+    title: "New Supplier",
+}
 
 export default function NewSupplierPage() {
     return (

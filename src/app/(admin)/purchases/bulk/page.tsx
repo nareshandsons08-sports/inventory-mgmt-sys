@@ -1,10 +1,15 @@
 import { ArrowLeft } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getSuppliers } from "@/actions/supplier"
 import { auth } from "@/auth"
 import { Button } from "@/components/ui/button"
 import { BulkPurchaseForm } from "./_components/bulk-purchase-form"
+
+export const metadata: Metadata = {
+    title: "Bulk Purchase",
+}
 
 export default async function BulkPurchasePage() {
     const session = await auth()

@@ -1,7 +1,13 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { prisma } from "@/lib/prisma"
 import { SupplierForm } from "../../_components/supplier-form"
+
+export const metadata: Metadata = {
+    title: "Edit Supplier",
+}
 
 export default async function EditSupplierPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params

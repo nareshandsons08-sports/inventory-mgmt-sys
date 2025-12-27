@@ -1,10 +1,16 @@
 import { AlertTriangle } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+
 import { auth } from "@/auth"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { prisma } from "@/lib/prisma"
+
+export const metadata: Metadata = {
+    title: "Low Stock Alerts",
+}
 
 export default async function LowStockPage() {
     const session = await auth()

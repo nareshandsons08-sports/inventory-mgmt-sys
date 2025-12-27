@@ -1,9 +1,15 @@
 import { ArrowLeft } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
+
 import { createProduct } from "@/actions/product"
 import { getAllSuppliers } from "@/actions/supplier"
 import { ProductForm } from "@/components/product-form"
 import { Button } from "@/components/ui/button"
+
+export const metadata: Metadata = {
+    title: "New Product",
+}
 
 export default async function NewProductPage() {
     const suppliers = await getAllSuppliers()

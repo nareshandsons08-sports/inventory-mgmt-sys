@@ -1,12 +1,18 @@
 import { Plus } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
+
 import { getSuppliers } from "@/actions/supplier"
 import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { SupplierList } from "./_components/supplier-list"
+
+export const metadata: Metadata = {
+    title: "Suppliers",
+}
 
 export default async function SuppliersPage({
     searchParams,

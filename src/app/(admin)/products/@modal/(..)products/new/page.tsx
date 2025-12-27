@@ -1,7 +1,12 @@
+import type { Metadata } from "next"
 import { createProduct } from "@/actions/product"
 import { getAllSuppliers } from "@/actions/supplier"
 import { InterceptedDialog } from "@/components/intercepted-dialog"
 import { ProductForm } from "@/components/product-form"
+
+export const metadata: Metadata = {
+    title: "New Product",
+}
 
 export default async function NewProductPage() {
     const suppliers = await getAllSuppliers()

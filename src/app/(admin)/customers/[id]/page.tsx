@@ -1,7 +1,9 @@
 import { ArrowLeft, User } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
+
 import { getCustomer } from "@/actions/customer"
 import { getTransactions } from "@/actions/transaction"
 import { SaleList } from "@/app/(admin)/sales/_components/sale-list"
@@ -9,6 +11,10 @@ import { auth } from "@/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+
+export const metadata: Metadata = {
+    title: "Customer Details",
+}
 
 export default async function CustomerDetailsPage({
     params,

@@ -1,10 +1,16 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
+
 import { auth } from "@/auth"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { NotificationSettings } from "@/components/notification-settings"
 import { ProfileForm } from "@/components/profile-form"
 import { ThemeSelector } from "@/components/theme-selector"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+export const metadata: Metadata = {
+    title: "Settings",
+}
 
 export default async function SettingsPage() {
     const session = await auth()

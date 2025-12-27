@@ -1,8 +1,14 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getProduct, updateProduct } from "@/actions/product"
+
 import { getAllSuppliers } from "@/actions/supplier"
 import { InterceptedDialog } from "@/components/intercepted-dialog"
 import { ProductForm } from "@/components/product-form"
+
+export const metadata: Metadata = {
+    title: "Edit Product",
+}
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params

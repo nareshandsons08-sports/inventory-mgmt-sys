@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
 
@@ -6,6 +7,10 @@ import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { PurchaseListWrapper } from "./_components/purchase-list-wrapper"
+
+export const metadata: Metadata = {
+    title: "Purchases",
+}
 
 interface PurchasesPageProps {
     searchParams: Promise<{ page?: string }>

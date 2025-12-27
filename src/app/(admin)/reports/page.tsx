@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
@@ -12,6 +13,10 @@ import {
     SalesHistoryTableWrapper,
     ValuationTableWrapper,
 } from "./_components/wrappers"
+
+export const metadata: Metadata = {
+    title: "Reports",
+}
 
 export default async function ReportsPage() {
     const session = await auth()
