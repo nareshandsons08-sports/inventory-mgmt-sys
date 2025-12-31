@@ -139,3 +139,45 @@ export interface SalesHistoryItem {
         }
     }[]
 }
+
+export interface ProfitLossSummary {
+    totalRevenue: number
+    totalCostOfGoodsSold: number
+    grossProfit: number
+    transactionCount: number
+}
+
+export interface TopProductItem {
+    id: string
+    name: string
+    sku: string
+    quantitySold: number
+    revenue: number
+}
+
+export interface SupplierStats {
+    id: string
+    name: string
+    totalPurchased: number
+    transactionCount: number
+}
+
+export interface CustomerStats {
+    id: string
+    name: string
+    totalSpent: number
+    visitCount: number
+}
+
+export interface PurchaseSummary {
+    totalSpend: number
+    count: number
+    avgValue: number
+}
+
+export interface EntitySummary {
+    totalCount: number
+    activeCount: number // engaged in at least one transaction
+    topPerformerName: string
+    topPerformerValue: number
+}

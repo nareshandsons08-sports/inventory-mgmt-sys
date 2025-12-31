@@ -6,11 +6,16 @@ import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { RefreshButton } from "./_components/refresh-button"
 import { ReportCardsSkeleton } from "./_components/skeletons"
 import {
+    CustomerStatsWrapper,
     LowStockTableWrapper,
+    OverviewWrapper,
+    PurchaseHistoryTableWrapper,
     ReportCardsWrapper,
     SalesHistoryTableWrapper,
+    SupplierStatsWrapper,
     ValuationTableWrapper,
 } from "./_components/wrappers"
 
@@ -28,24 +33,69 @@ export default async function ReportsPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+                <RefreshButton />
+            </div>
 
             <Suspense fallback={<ReportCardsSkeleton />}>
                 <ReportCardsWrapper />
             </Suspense>
 
-            <Tabs defaultValue="valuation" className="space-y-4">
-                <TabsList>
+            <Tabs defaultValue="overview" className="space-y-4">
+                <TabsList className="flex-wrap h-auto">
+                    <TabsTrigger className="cursor-pointer" value="overview">
+                        Overview
+                    </TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="sales">
+                        Sales
+                    </TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="purchases">
+                        Purchases
+                    </TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="suppliers">
+                        Suppliers
+                    </TabsTrigger>
+                    <TabsTrigger className="cursor-pointer" value="customers">
+                        Customers
+                    </TabsTrigger>
                     <TabsTrigger className="cursor-pointer" value="valuation">
-                        Valuation Report
+                        Valuation
                     </TabsTrigger>
                     <TabsTrigger className="cursor-pointer" value="low-stock">
                         Low Stock
                     </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="sales">
-                        Sales History
-                    </TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="overview" className="space-y-4">
+                    <Suspense fallback={<ReportCardsSkeleton />}>
+                        <OverviewWrapper />
+                    </Suspense>
+                </TabsContent>
+
+                <TabsContent value="sales" className="space-y-4">
+                    <Suspense fallback={<DataTableSkeleton columnCount={4} />}>
+                        <SalesHistoryTableWrapper />
+                    </Suspense>
+                </TabsContent>
+
+                <TabsContent value="purchases" className="space-y-4">
+                    <Suspense fallback={<DataTableSkeleton columnCount={5} />}>
+                        <PurchaseHistoryTableWrapper />
+                    </Suspense>
+                </TabsContent>
+
+                <TabsContent value="suppliers" className="space-y-4">
+                    <Suspense fallback={<DataTableSkeleton columnCount={3} />}>
+                        <SupplierStatsWrapper />
+                    </Suspense>
+                </TabsContent>
+
+                <TabsContent value="customers" className="space-y-4">
+                    <Suspense fallback={<DataTableSkeleton columnCount={3} />}>
+                        <CustomerStatsWrapper />
+                    </Suspense>
+                </TabsContent>
 
                 <TabsContent value="valuation" className="space-y-4">
                     <Suspense fallback={<DataTableSkeleton columnCount={6} />}>
@@ -56,12 +106,6 @@ export default async function ReportsPage() {
                 <TabsContent value="low-stock" className="space-y-4">
                     <Suspense fallback={<DataTableSkeleton columnCount={5} />}>
                         <LowStockTableWrapper />
-                    </Suspense>
-                </TabsContent>
-
-                <TabsContent value="sales" className="space-y-4">
-                    <Suspense fallback={<DataTableSkeleton columnCount={4} />}>
-                        <SalesHistoryTableWrapper />
                     </Suspense>
                 </TabsContent>
             </Tabs>
