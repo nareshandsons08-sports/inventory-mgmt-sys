@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
@@ -5,6 +6,10 @@ import { auth } from "@/auth"
 import { CreateUserDialog } from "@/components/create-user-dialog"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
 import { UserListWrapper } from "./_components/user-list-wrapper"
+
+export const metadata: Metadata = {
+    title: "Users",
+}
 
 interface UsersPageProps {
     searchParams: Promise<{ page?: string }>

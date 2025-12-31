@@ -2,11 +2,11 @@
 
 import { Menu, Package } from "lucide-react"
 import { useState } from "react"
+import { ModeToggle } from "@/components/mode-toggle"
+import { NotificationBell } from "@/components/NotificationBell"
 import { Sidebar } from "@/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { ModeToggle } from "@/components/mode-toggle"
-import { NotificationBell } from "@/components/NotificationBell"
 
 export function Header({
     user,
@@ -20,7 +20,7 @@ export function Header({
     const [open, setOpen] = useState(false)
 
     return (
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-15 lg:px-6">
             <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
                     <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -49,7 +49,7 @@ export function Header({
             {/* Actions */}
             <div className="flex items-center gap-2">
                 <ModeToggle />
-                <NotificationBell />
+                <NotificationBell role={user.role} />
             </div>
         </header>
     )

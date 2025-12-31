@@ -1,4 +1,5 @@
 import { FileDown, Plus } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
@@ -12,6 +13,10 @@ import { Button } from "@/components/ui/button"
 import { FilterWrapper } from "./_components/filter-wrapper"
 import { ProductListWrapper } from "./_components/product-list-wrapper"
 import { FilterSkeleton } from "./_components/skeletons"
+
+export const metadata: Metadata = {
+    title: "Products",
+}
 
 export default async function ProductsPage({
     searchParams,

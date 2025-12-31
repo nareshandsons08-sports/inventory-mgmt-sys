@@ -1,6 +1,12 @@
 "use client"
 
 import { format } from "date-fns"
+import { Eye, Search } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { TransactionDetailsDialog } from "@/components/transaction-details-dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { Product, Transaction, TransactionItem } from "@/types"
@@ -21,42 +27,94 @@ interface SaleListProps {
 import { Pagination } from "@/components/pagination"
 
 export function SaleList({ sales, metadata }: SaleListProps) {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null)
+    const [detailsOpen, setDetailsOpen] = useState(false)
+    const [search, setSearch] = useState(searchParams.get("search") || "")
+
+    // Debounce search update
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            const params = new URLSearchParams(searchParams)
+            const currentSearch = params.get("search") || ""
+            if (search !== currentSearch) {
+                if (search) {
+                    params.set("search", search)
+                } else {
+                    params.delete("search")
+                }
+                params.set("page", "1") // Reset page on search
+                router.replace(`?${params.toString()}`)
+            }
+        }, 300)
+        return () => clearTimeout(timeout)
+    }, [search, router, searchParams])
+
     return (
         <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+                <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search sales..."
+                        className="pl-8"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+            </div>
+
             <div className="rounded-md border bg-card">
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>ID</TableHead>
+                            <TableHead>Customer</TableHead>
                             <TableHead>Items</TableHead>
                             <TableHead className="text-right">Total Amount</TableHead>
+                            <TableHead className="w-12.5"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {sales.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    No sales recorded.
+                                <TableCell colSpan={6} className="h-24 text-center">
+                                    No sales found.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             sales.map((sale) => (
-                                <TableRow key={sale.id}>
+                                <TableRow
+                                    key={sale.id}
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => {
+                                        setSelectedSale(sale)
+                                        setDetailsOpen(true)
+                                    }}
+                                >
                                     <TableCell>{format(new Date(sale.date), "MMM d, yyyy HH:mm")}</TableCell>
-                                    <TableCell className="font-mono text-xs">{sale.id.slice(-8)}</TableCell>
+                                    <TableCell className="font-mono text-xs text-muted-foreground" title={sale.id}>
+                                        {sale.id.slice(0, 8)}...
+                                    </TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            {sale.items.map((item) => (
-                                                <span key={item.id} className="text-sm text-muted-foreground">
-                                                    {item.product?.name || "Unknown Product"} x {item.quantity} ({" "}
-                                                    {formatCurrency(Number(item.product?.salePrice))})
-                                                </span>
-                                            ))}
-                                        </div>
+                                        {sale.customer ? (
+                                            <span className="font-medium">{sale.customer.name}</span>
+                                        ) : (
+                                            <span className="text-muted-foreground">-</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-sm text-muted-foreground">{sale.items.length} items</div>
                                     </TableCell>
                                     <TableCell className="text-right font-bold">
                                         {formatCurrency(Number(sale.total))}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -72,6 +130,8 @@ export function SaleList({ sales, metadata }: SaleListProps) {
                     pageSize={50}
                 />
             )}
+
+            <TransactionDetailsDialog transaction={selectedSale} open={detailsOpen} onOpenChange={setDetailsOpen} />
         </div>
     )
 }

@@ -1,13 +1,20 @@
 import { ArrowLeft } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+
 import { getProduct, updateProduct } from "@/actions/product"
+import { getAllSuppliers } from "@/actions/supplier"
 import { ProductForm } from "@/components/product-form"
 import { Button } from "@/components/ui/button"
 
+export const metadata: Metadata = {
+    title: "Edit Product",
+}
+
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    const product = await getProduct(id)
+    const [product, suppliers] = await Promise.all([getProduct(id), getAllSuppliers()])
 
     if (!product) {
         notFound()
@@ -31,6 +38,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                 title="Edit Product"
                 description="Update the product details."
                 submitLabel="Save Changes"
+                suppliers={suppliers}
             />
         </section>
     )

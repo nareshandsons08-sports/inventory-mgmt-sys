@@ -1,8 +1,16 @@
+import type { Metadata } from "next"
 import { createProduct } from "@/actions/product"
+import { getAllSuppliers } from "@/actions/supplier"
 import { InterceptedDialog } from "@/components/intercepted-dialog"
 import { ProductForm } from "@/components/product-form"
 
-export default function NewProductPage() {
+export const metadata: Metadata = {
+    title: "New Product",
+}
+
+export default async function NewProductPage() {
+    const suppliers = await getAllSuppliers()
+
     return (
         <InterceptedDialog title="Add New Product">
             <ProductForm
@@ -11,6 +19,7 @@ export default function NewProductPage() {
                 description="Enter the details for the new product."
                 submitLabel="Create Product"
                 isModal
+                suppliers={suppliers}
             />
         </InterceptedDialog>
     )

@@ -1,35 +1,67 @@
 "use client"
 
-import { ArrowLeft, ScanBarcode, Trash2 } from "lucide-react"
+import { ArrowLeft, IndianRupee, Percent, Plus, ScanBarcode, Trash, User } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
+import { getCustomers } from "@/actions/customer"
 import { getProducts } from "@/actions/product"
 import { createTransaction } from "@/actions/transaction"
+import { CustomerForm } from "@/app/(admin)/customers/_components/customer-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { formatCurrency } from "@/lib/utils"
-
+import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { cn, formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
 
 export default function NewSalePage() {
     const [products, setProducts] = useState<Product[]>([])
-    const [items, setItems] = useState<{ productId: string; quantity: number; price: number; name: string }[]>([])
+    const [items, setItems] = useState<
+        {
+            productId: string
+            quantity: number
+            price: number
+            name: string
+            discount: number // The actual monetary value deducted
+            discountInput: number // The user input value
+            discountType: "amount" | "percentage"
+        }[]
+    >([])
     const [loading, setLoading] = useState(false)
     const [barcodeInput, setBarcodeInput] = useState("")
     const barcodeInputRef = useRef<HTMLInputElement>(null)
 
+    // Customer State
+    const [customerOpen, setCustomerOpen] = useState(false)
+    const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name: string } | null>(null)
+    const [customerSearch, setCustomerSearch] = useState("")
+    const [customerResults, setCustomerResults] = useState<{ id: string; name: string; phone?: string | null }[]>([])
+    const [newCustomerOpen, setNewCustomerOpen] = useState(false)
+
     useEffect(() => {
         getProducts().then((data) => setProducts(data))
-        // Auto-focus barcode input
         barcodeInputRef.current?.focus()
     }, [])
+
+    // Search customers (debounce)
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            const res = await getCustomers({ search: customerSearch, limit: 5 })
+            setCustomerResults(res.data)
+        }
+        const timeout = setTimeout(fetchCustomers, 300)
+        return () => clearTimeout(timeout)
+    }, [customerSearch])
 
     const handleBarcodeSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!barcodeInput) return
 
-        // Find product by barcode or SKU
         const product = products.find(
             (p) => p.barcode === barcodeInput || p.sku.toLowerCase() === barcodeInput.toLowerCase()
         )
@@ -38,7 +70,7 @@ export default function NewSalePage() {
             addItemToCart(product)
             setBarcodeInput("")
         } else {
-            alert("Product not found!")
+            toast.error("Product not found!")
         }
     }
 
@@ -48,6 +80,12 @@ export default function NewSalePage() {
         if (existingItemIndex >= 0) {
             const newItems = [...items]
             newItems[existingItemIndex].quantity += 1
+            // Recalculate discount if it's percentage
+            if (newItems[existingItemIndex].discountType === "percentage") {
+                const totalLinePrice = newItems[existingItemIndex].quantity * newItems[existingItemIndex].price
+                newItems[existingItemIndex].discount =
+                    totalLinePrice * (newItems[existingItemIndex].discountInput / 100)
+            }
             setItems(newItems)
         } else {
             setItems([
@@ -57,6 +95,9 @@ export default function NewSalePage() {
                     quantity: 1,
                     price: Number(product.salePrice),
                     name: product.name,
+                    discount: 0,
+                    discountInput: 0,
+                    discountType: "amount",
                 },
             ])
         }
@@ -69,24 +110,71 @@ export default function NewSalePage() {
     const updateQuantity = (index: number, qty: number) => {
         if (qty < 1) return
         const newItems = [...items]
-        newItems[index].quantity = qty
+        const item = newItems[index]
+        item.quantity = qty
+
+        // Recalculate discount
+        if (item.discountType === "percentage") {
+            const totalLinePrice = item.quantity * item.price
+            item.discount = totalLinePrice * (item.discountInput / 100)
+        }
+
+        setItems(newItems)
+    }
+
+    const updateDiscount = (index: number, val: number, type?: "amount" | "percentage") => {
+        if (val < 0) return
+        const newItems = [...items]
+        const item = newItems[index]
+
+        item.discountInput = val
+        if (type) item.discountType = type
+
+        const totalLinePrice = item.quantity * item.price
+
+        if (item.discountType === "percentage") {
+            // Percentage of TOTAL line price (qty * price)
+            item.discount = totalLinePrice * (item.discountInput / 100)
+        } else {
+            // Fixed amount deducted from the TOTAL line
+            item.discount = item.discountInput
+        }
+
         setItems(newItems)
     }
 
     const handleSubmit = async () => {
         if (items.length === 0) return
         setLoading(true)
-        await createTransaction({
-            type: "SALE",
-            items: items.map((i) => ({
-                productId: i.productId,
-                quantity: Number(i.quantity),
-                price: Number(i.price),
-            })),
-        })
+
+        try {
+            const res = await createTransaction({
+                type: "SALE",
+                customerId: selectedCustomer?.id,
+                items: items.map((i) => ({
+                    productId: i.productId,
+                    quantity: Number(i.quantity),
+                    price: Number(i.price),
+                    discount: Number(i.discount),
+                })),
+            })
+
+            if (res?.error) {
+                toast.error(res.error)
+            } else {
+                toast.success("Sale completed!")
+                setItems([])
+                setSelectedCustomer(null)
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Failed to complete sale")
+        } finally {
+            setLoading(false)
+        }
     }
 
-    const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+    const total = items.reduce((sum, item) => sum + (item.quantity * item.price - item.discount), 0)
 
     return (
         <div className="flex flex-col gap-6 max-w-4xl mx-auto">
@@ -143,40 +231,204 @@ export default function NewSalePage() {
                 </div>
 
                 {/* Right Column: Cart & Checkout */}
-                <div className="md:col-span-1">
+                <div className="md:col-span-1 space-y-4">
+                    {/* Customer Selection */}
+                    <Card>
+                        <CardHeader className="pb-3 pt-4 px-4">
+                            <CardTitle className="text-sm font-medium">Customer</CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-4 pb-4">
+                            <div className="flex w-full items-center gap-2">
+                                <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={customerOpen}
+                                            className="flex-1 justify-between truncate"
+                                        >
+                                            {selectedCustomer ? selectedCustomer.name : "Select customer..."}
+                                            <User className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-75 p-0" align="start">
+                                        <Command shouldFilter={false}>
+                                            <CommandInput
+                                                placeholder="Search name or phone..."
+                                                value={customerSearch}
+                                                onValueChange={setCustomerSearch}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>No customer found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {customerResults.map((customer) => (
+                                                        <CommandItem
+                                                            key={customer.id}
+                                                            value={customer.name}
+                                                            onSelect={() => {
+                                                                setSelectedCustomer({
+                                                                    id: customer.id,
+                                                                    name: customer.name,
+                                                                })
+                                                                setCustomerOpen(false)
+                                                            }}
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span>{customer.name}</span>
+                                                                {customer.phone && (
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {customer.phone}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+
+                                <Dialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="icon" className="shrink-0">
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add New Customer</DialogTitle>
+                                        </DialogHeader>
+                                        <CustomerForm
+                                            onSuccess={(customer) => {
+                                                setSelectedCustomer({ id: customer.id, name: customer.name })
+                                                setNewCustomerOpen(false)
+                                            }}
+                                            onCancel={() => setNewCustomerOpen(false)}
+                                        />
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+
+                            {selectedCustomer && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 h-6 text-xs text-muted-foreground w-full justify-start px-0 hover:bg-transparent hover:underline"
+                                    onClick={() => setSelectedCustomer(null)}
+                                >
+                                    Clear selected
+                                </Button>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <Card className="h-full flex flex-col">
                         <CardHeader className="pb-4 border-b">
                             <CardTitle>Current Sale</CardTitle>
                             <CardDescription>{items.length} items</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1 overflow-auto py-4 space-y-4">
+                        <CardContent className="flex-1 overflow-auto py-4 space-y-4 min-h-50 max-h-100">
                             {items.length === 0 ? (
                                 <div className="text-center text-muted-foreground py-8">Cart is empty</div>
                             ) : (
                                 items.map((item, index) => (
-                                    <div key={item.productId} className="flex justify-between items-start gap-2">
-                                        <div className="flex-1">
-                                            <div className="font-medium text-sm">{item.name}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {formatCurrency(item.price)} x {item.quantity}
+                                    <div
+                                        key={item.productId}
+                                        className="flex flex-col gap-2 border-b pb-4 last:border-0"
+                                    >
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="flex-1">
+                                                <div className="font-medium text-sm">{item.name}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {formatCurrency(item.price)} x {item.quantity}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <Input
+                                                    type="number"
+                                                    className="h-8 w-14 px-1 text-center"
+                                                    value={item.quantity}
+                                                    onChange={(e) => updateQuantity(index, Number(e.target.value))}
+                                                />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive cursor-pointer"
+                                                    onClick={() => handleRemoveItem(index)}
+                                                >
+                                                    <span className="sr-only">Remove</span>
+                                                    <Trash className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <Input
-                                                type="number"
-                                                className="h-8 w-14 px-1 text-center"
-                                                value={item.quantity}
-                                                onChange={(e) => updateQuantity(index, Number(e.target.value))}
-                                            />
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-destructive cursor-pointer"
-                                                onClick={() => handleRemoveItem(index)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+
+                                        <div className="flex items-center justify-between gap-2 mt-1">
+                                            <Label className="text-xs text-muted-foreground w-12">Discount</Label>
+                                            <div className="flex flex-1 items-center gap-2">
+                                                <div className="relative flex-1">
+                                                    <span
+                                                        style={{ top: "8px" }}
+                                                        className="absolute top-2 left-2 text-[10px] text-muted-foreground font-medium flex items-center h-4 pointer-events-none"
+                                                    >
+                                                        {item.discountType === "percentage" ? (
+                                                            <Percent className="h-3 w-3" />
+                                                        ) : (
+                                                            <IndianRupee className="h-3 w-3" />
+                                                        )}
+                                                    </span>
+                                                    <Input
+                                                        type="number"
+                                                        className="h-7 pl-6 pr-2 text-right text-xs"
+                                                        placeholder="0"
+                                                        min="0"
+                                                        value={item.discountInput > 0 ? item.discountInput : ""}
+                                                        onChange={(e) => updateDiscount(index, Number(e.target.value))}
+                                                    />
+                                                </div>
+                                                <ToggleGroup
+                                                    type="single"
+                                                    value={item.discountType}
+                                                    onValueChange={(val) => {
+                                                        if (val)
+                                                            updateDiscount(
+                                                                index,
+                                                                item.discountInput,
+                                                                val as "amount" | "percentage"
+                                                            )
+                                                    }}
+                                                    className="h-7.5 border rounded-md p-0.5 gap-0.5"
+                                                >
+                                                    <ToggleGroupItem
+                                                        value="amount"
+                                                        size="sm"
+                                                        className={cn(
+                                                            "h-full px-2 rounded-sm hover:bg-muted transition-colors",
+                                                            item.discountType === "amount" &&
+                                                                "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                        )}
+                                                    >
+                                                        <IndianRupee className="h-3 w-3" />
+                                                    </ToggleGroupItem>
+                                                    <ToggleGroupItem
+                                                        value="percentage"
+                                                        size="sm"
+                                                        className={cn(
+                                                            "h-full px-2 rounded-sm hover:bg-muted transition-colors",
+                                                            item.discountType === "percentage" &&
+                                                                "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                        )}
+                                                    >
+                                                        <Percent className="h-3 w-3" />
+                                                    </ToggleGroupItem>
+                                                </ToggleGroup>
+                                            </div>
                                         </div>
+                                        {item.discount > 0 && (
+                                            <div className="text-right text-xs text-green-600">
+                                                -{formatCurrency(item.discount)}
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}

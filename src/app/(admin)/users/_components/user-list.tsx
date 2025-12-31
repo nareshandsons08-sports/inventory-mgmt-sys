@@ -34,7 +34,7 @@ export function UserList({ users, metadata }: UserListProps) {
                                     <TableHead>Email</TableHead>
                                     <TableHead>Role</TableHead>
                                     <TableHead>Joined</TableHead>
-                                    <TableHead className="w-[50px]"></TableHead>
+                                    <TableHead className="w-12.5"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -49,7 +49,7 @@ export function UserList({ users, metadata }: UserListProps) {
                                         </TableCell>
                                         <TableCell>{user.createdAt ? formatDate(user.createdAt) : "N/A"}</TableCell>
                                         <TableCell>
-                                            <UserActions userId={user.id} />
+                                            <UserActions userId={user.id} userName={user.name} />
                                         </TableCell>
                                     </TableRow>
                                 ))}
