@@ -41,7 +41,34 @@ export async function createTransaction(data: {
 
     try {
         await prisma.$transaction(async (tx) => {
-            // 1. Create Transaction
+            // 1. Prepare Items with Cost Snapshot
+            const transactionItemsData = []
+
+            // We need to fetch current product cost for SALES to snapshot it
+            // For PURCHASES, the cost is irrelevant (it's 0 or we could store incoming price, but typically we track COGS on Sale)
+            // Let's store cost for both for consistency (Purchase cost = incoming price)
+
+            for (const item of items) {
+                let costSnapshot = new Prisma.Decimal(0)
+
+                if (type === "SALE") {
+                    const product = await tx.product.findUnique({ where: { id: item.productId } })
+                    costSnapshot = product?.costPrice || new Prisma.Decimal(0)
+                } else {
+                    // For Purchase, the "cost" of the item is effectively the price we paid
+                    costSnapshot = new Prisma.Decimal(item.price)
+                }
+
+                transactionItemsData.push({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: new Prisma.Decimal(item.price),
+                    discount: new Prisma.Decimal(item.discount || 0),
+                    cost: costSnapshot,
+                })
+            }
+
+            // 2. Create Transaction
             const transactionData: Prisma.TransactionCreateInput = {
                 type,
                 total: new Prisma.Decimal(total),
@@ -53,11 +80,12 @@ export async function createTransaction(data: {
                     ? { connect: { id: validatedData.data.supplierId } }
                     : undefined,
                 items: {
-                    create: items.map((item) => ({
+                    create: transactionItemsData.map((item) => ({
                         product: { connect: { id: item.productId } },
                         quantity: item.quantity,
-                        price: new Prisma.Decimal(item.price),
-                        discount: new Prisma.Decimal(item.discount || 0),
+                        price: item.price,
+                        discount: item.discount,
+                        cost: item.cost,
                     })),
                 },
             }
@@ -66,19 +94,60 @@ export async function createTransaction(data: {
                 data: transactionData,
             })
 
-            // 2. Update Product Stock
+            // 3. Update Product Stock and Cost (WAC for Purchases)
             for (const item of items) {
                 const qtyChange = type === "PURCHASE" ? item.quantity : -item.quantity
 
-                await tx.product.update({
-                    where: { id: item.productId },
-                    data: {
-                        stockQty: {
-                            increment: qtyChange,
+                if (type === "PURCHASE") {
+                    const currentProduct = await tx.product.findUnique({
+                        where: { id: item.productId },
+                        select: { stockQty: true, costPrice: true },
+                    })
+
+                    if (currentProduct) {
+                        const currentStock = currentProduct.stockQty
+                        const currentCost = Number(currentProduct.costPrice)
+                        const newStock = item.quantity
+                        // Effective unit cost considering line discount
+                        const totalLineCost = item.quantity * item.price - (item.discount || 0)
+                        const unitCost = totalLineCost / item.quantity
+
+                        let newCostPrice = currentCost
+                        const finalStock = currentStock + newStock
+
+                        // Weighted Average Cost Calculation
+                        if (currentStock <= 0) {
+                            // If we had no stock (or negative), the new cost is just the incoming cost
+                            newCostPrice = unitCost
+                        } else {
+                            // (Old Value + New Value) / Total Qty
+                            const totalValue = currentStock * currentCost + totalLineCost
+                            newCostPrice = totalValue / finalStock
+                        }
+
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: {
+                                stockQty: { increment: qtyChange },
+                                costPrice: newCostPrice,
+                            },
+                        })
+                    } else {
+                        // Fallback if product not found (shouldn't happen due to FK)
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: { stockQty: { increment: qtyChange } },
+                        })
+                    }
+                } else {
+                    // Sale: Just update stock
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: {
+                            stockQty: { increment: qtyChange },
                         },
-                    },
-                })
-                // Invalidate individual product cache if needed, but 'products' tag covers list
+                    })
+                }
             }
         })
     } catch (error) {
