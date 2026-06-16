@@ -2,8 +2,8 @@ import { getSalesHistory } from "@/actions/reports"
 import { OverviewChart } from "@/components/overview-chart"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export async function OverviewChartCard({ role }: { role?: string }) {
-    const canSeeFinancials = role === "ADMIN" || role === "MANAGER"
+export async function OverviewChartCard({ permissions = [] }: { permissions?: string[] }) {
+    const canSeeFinancials = permissions.includes("reports:history")
 
     if (!canSeeFinancials) return null
 
@@ -11,16 +11,19 @@ export async function OverviewChartCard({ role }: { role?: string }) {
 
     const chartData = salesHistory
         .slice(0, 50)
-        .reduce((acc, sale) => {
-            const date = new Date(sale.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-            const existing = acc.find((d) => d.name === date)
-            if (existing) {
-                existing.total += sale.total
-            } else {
-                acc.push({ name: date, total: sale.total })
-            }
-            return acc
-        }, [] as { name: string; total: number }[])
+        .reduce(
+            (acc, sale) => {
+                const date = new Date(sale.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                const existing = acc.find((d) => d.name === date)
+                if (existing) {
+                    existing.total += sale.total
+                } else {
+                    acc.push({ name: date, total: sale.total })
+                }
+                return acc
+            },
+            [] as { name: string; total: number }[],
+        )
         .reverse()
 
     return (

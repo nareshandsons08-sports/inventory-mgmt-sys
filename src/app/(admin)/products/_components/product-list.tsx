@@ -15,14 +15,23 @@ interface ProductListProps {
         totalPages: number
         total: number
     }
-    role?: string
+    permissions?: string[]
 }
 
-export function ProductList({ products, metadata, role }: ProductListProps) {
+export function ProductList({ products, metadata, permissions }: ProductListProps) {
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(productColumns.map((c) => c.id)))
 
-    const [optimisticProducts, removeOptimisticProduct] = useOptimistic(products, (state, idToRemove: string) =>
-        state.filter((p) => p.id !== idToRemove)
+    const [optimisticProducts, updateOptimisticProducts] = useOptimistic(
+        products,
+        (state, action: { type: "delete"; id: string } | { type: "adjust"; id: string; qtyChange: number }) => {
+            if (action.type === "delete") {
+                return state.filter((p) => p.id !== action.id)
+            }
+            if (action.type === "adjust") {
+                return state.map((p) => (p.id === action.id ? { ...p, stockQty: p.stockQty + action.qtyChange } : p))
+            }
+            return state
+        },
     )
 
     const toggleColumn = useCallback((column: string) => {
@@ -55,7 +64,7 @@ export function ProductList({ products, metadata, role }: ProductListProps) {
                                     >
                                         {column.label}
                                     </TableHead>
-                                ) : null
+                                ) : null,
                             )}
                         </TableRow>
                     </TableHeader>
@@ -72,8 +81,11 @@ export function ProductList({ products, metadata, role }: ProductListProps) {
                                     key={product.id}
                                     product={product}
                                     visibleColumns={visibleColumns}
-                                    role={role}
-                                    onDelete={() => removeOptimisticProduct(product.id)}
+                                    permissions={permissions}
+                                    onDelete={() => updateOptimisticProducts({ type: "delete", id: product.id })}
+                                    onAdjust={(qtyChange) =>
+                                        updateOptimisticProducts({ type: "adjust", id: product.id, qtyChange })
+                                    }
                                 />
                             ))
                         )}

@@ -1,9 +1,14 @@
 "use server"
 
+import "server-only"
+
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
+
+import { logActivity } from "@/actions/audit"
 import { auth } from "@/auth"
+import { Authz } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 import { serializePrisma } from "@/lib/prisma-utils"
 import { productSchema } from "@/lib/schemas"
@@ -12,9 +17,12 @@ import type { ActionState, Product } from "@/types"
 
 export async function createProduct(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:create")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     const rawData = {
         sku: formData.get("sku"),
@@ -51,6 +59,12 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
         if (!imageFile.type.startsWith("image/")) {
             return { error: "File must be an image" }
         }
+        // SEC-06: Validate file extension against allowlist (MIME type is client-provided and spoofable)
+        const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return { error: "Only JPG, PNG, WebP, and GIF images are allowed" }
+        }
         imageUrl = await uploadImage(imageFile)
     }
 
@@ -65,9 +79,10 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
     }
 
     try {
-        await prisma.product.create({
+        const product = await prisma.product.create({
             data: dataToCreate,
         })
+        await logActivity("PRODUCT_CREATE", { id: product.id, sku: product.sku, name: product.name })
     } catch (error) {
         console.error("Failed to create product:", error)
         if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
@@ -92,12 +107,15 @@ export async function createProduct(_prevState: ActionState | null, formData: Fo
 export async function updateProduct(
     id: string,
     _prevState: ActionState | null,
-    formData: FormData
+    formData: FormData,
 ): Promise<ActionState> {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:update")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     const rawData = {
         sku: formData.get("sku"),
@@ -133,6 +151,12 @@ export async function updateProduct(
         if (!imageFile.type.startsWith("image/")) {
             return { error: "File must be an image" }
         }
+        // SEC-06: Validate file extension against allowlist
+        const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        const ext = `.${imageFile.name.split(".").pop()?.toLowerCase() || ""}`
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            return { error: "Only JPG, PNG, WebP, and GIF images are allowed" }
+        }
         imageUrl = await uploadImage(imageFile)
     }
 
@@ -147,10 +171,11 @@ export async function updateProduct(
     }
 
     try {
-        await prisma.product.update({
+        const product = await prisma.product.update({
             where: { id },
             data: dataToUpdate,
         })
+        await logActivity("PRODUCT_UPDATE", { id: product.id, sku: product.sku, name: product.name })
     } catch (error) {
         console.error("Failed to update product:", error)
         if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
@@ -175,9 +200,12 @@ export async function updateProduct(
 
 export async function archiveProduct(id: string) {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:archive")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     try {
         await prisma.product.update({
@@ -196,9 +224,12 @@ export async function archiveProduct(id: string) {
 
 export async function unarchiveProduct(id: string) {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
+    }
+    const authCheck = Authz.check(session.user, "products:archive")
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
     try {
         await prisma.product.update({
@@ -217,26 +248,25 @@ export async function unarchiveProduct(id: string) {
 
 export async function deleteProduct(id: string) {
     const session = await auth()
-    const role = session?.user?.role
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    if (!session?.user) {
         return { error: "Unauthorized" }
     }
 
-    // Check for dependencies
     const dependencyCount = await prisma.transactionItem.count({
         where: { productId: id },
     })
-
-    if (dependencyCount > 0) {
-        return { error: "Cannot delete product with existing sales or purchases. Please archive it instead." }
-    }
 
     const adjustmentCount = await prisma.adjustment.count({
         where: { productId: id },
     })
 
-    if (adjustmentCount > 0) {
-        return { error: "Cannot delete product with inventory adjustments. Please archive it instead." }
+    const hasDependencies = dependencyCount > 0 || adjustmentCount > 0
+
+    const authCheck = Authz.check(session.user, "products:delete", {
+        product: { hasDependencies },
+    })
+    if (!authCheck.authorized) {
+        return { error: authCheck.reason || "Unauthorized" }
     }
 
     try {
@@ -250,9 +280,11 @@ export async function deleteProduct(id: string) {
             await deleteImage(product.imageUrl)
         }
 
-        await prisma.product.delete({
+        const deletedProduct = await prisma.product.delete({
             where: { id },
+            select: { id: true, sku: true, name: true },
         })
+        await logActivity("PRODUCT_DELETE", deletedProduct)
         revalidateTag("products", "minutes")
         revalidateTag("reports", "minutes")
         revalidatePath("/products")
@@ -264,6 +296,14 @@ export async function deleteProduct(id: string) {
 }
 
 export async function getProducts(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
+    // SEC-14: Auth check before returning product data
+    const session = await auth()
+    if (!session?.user) return []
+
+    return getProductsCached(options)
+}
+
+async function getProductsCached(options?: { query?: string; supplierId?: string }): Promise<Product[]> {
     "use cache"
     // Create a cache key based on options
     const queryKey = options?.query ? `query-${options.query}` : "no-query"
@@ -312,7 +352,20 @@ export async function getProductsPaginated(
     query?: string,
     page: number = 1,
     limit: number = 10,
-    filters?: ProductFilters
+    filters?: ProductFilters,
+): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
+    // SEC-14: Auth check before returning product data
+    const session = await auth()
+    if (!session?.user) return { products: [], metadata: { total: 0, page: 1, totalPages: 0 } }
+
+    return getProductsPaginatedCached(query, page, limit, filters)
+}
+
+async function getProductsPaginatedCached(
+    query?: string,
+    page: number = 1,
+    limit: number = 10,
+    filters?: ProductFilters,
 ): Promise<{ products: Product[]; metadata: { total: number; page: number; totalPages: number } }> {
     "use cache"
     cacheTag("products")
@@ -419,4 +472,64 @@ export async function getProduct(id: string): Promise<Product | null> {
         where: { id },
     })
     return serializePrisma(product)
+}
+
+export type ExportedProduct = Omit<Product, "supplier"> & {
+    supplier?: { name: string } | null
+}
+
+export async function getAllProductsForExport(query?: string, filters?: ProductFilters): Promise<ExportedProduct[]> {
+    const session = await auth()
+    if (!session?.user) return []
+    const authCheck = Authz.check(session.user, "products:read")
+    if (!authCheck.authorized) return []
+
+    const where: Prisma.ProductWhereInput = {}
+
+    if (query) {
+        where.OR = [
+            { name: { contains: query, mode: "insensitive" as const } },
+            { sku: { contains: query, mode: "insensitive" as const } },
+            { brand: { contains: query, mode: "insensitive" as const } },
+            { category: { contains: query, mode: "insensitive" as const } },
+        ]
+    }
+
+    if (filters?.categories?.length) {
+        where.category = { in: filters.categories }
+    }
+
+    if (filters?.brands?.length) {
+        where.brand = { in: filters.brands }
+    }
+
+    if (filters?.minPrice !== undefined || filters?.maxPrice !== undefined) {
+        where.salePrice = {}
+        if (filters.minPrice !== undefined) where.salePrice.gte = filters.minPrice
+        if (filters.maxPrice !== undefined) where.salePrice.lte = filters.maxPrice
+    }
+
+    if (filters?.inStock) {
+        where.stockQty = { gt: 0 }
+    }
+
+    if (filters?.isArchived !== undefined) {
+        where.isArchived = filters.isArchived
+    } else {
+        where.isArchived = false
+    }
+
+    const products = await prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: {
+            supplier: {
+                select: {
+                    name: true,
+                },
+            },
+        },
+    })
+
+    return serializePrisma(products)
 }

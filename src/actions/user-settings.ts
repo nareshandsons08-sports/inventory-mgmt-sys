@@ -1,5 +1,7 @@
 "use server"
 
+import "server-only"
+
 import bcrypt from "bcryptjs"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -23,15 +25,17 @@ export async function updatePassword(data: z.infer<typeof updatePasswordSchema>)
 
     // 1. Check Permissions
     const isSelfUpdate = currentUser.id === userId
-    const isAdmin = currentUser.role === "ADMIN"
+    const permissions = currentUser.permissions || []
+    const canUpdateUser = permissions.includes("users:update")
 
-    if (!isSelfUpdate && !isAdmin) {
+    if (!isSelfUpdate && !canUpdateUser) {
         return { error: "Unauthorized. You can only change your own password." }
     }
 
     try {
-        // 2. If Self-Update, verify current password
-        if (isSelfUpdate && !isAdmin) {
+        // 2. SEC-12: Always verify current password for self-updates (regardless of admin status)
+        //    This prevents password takeover if an admin session is hijacked.
+        if (isSelfUpdate) {
             if (!currentPassword) {
                 return { error: "Current password is required" }
             }

@@ -1,7 +1,12 @@
 "use server"
 
+import "server-only"
 import type { Prisma } from "@prisma/client"
 import { cacheLife, cacheTag, revalidateTag } from "next/cache"
+
+import { auth } from "@/auth"
+import { Authz } from "@/lib/access"
+import type { Action, AuthUser } from "@/lib/access/types"
 import { prisma } from "@/lib/prisma"
 import type {
     CustomerStats,
@@ -15,7 +20,38 @@ import type {
     ValuationReport,
 } from "@/types"
 
+async function checkReportPermission(action: Action) {
+    const session = await auth()
+    if (!session?.user) {
+        throw new Error("Unauthorized")
+    }
+    const authCheck = Authz.check(session.user as AuthUser, action)
+    if (!authCheck.authorized) {
+        throw new Error(authCheck.reason || "Unauthorized")
+    }
+}
+
+export interface ExportedSupplierStats {
+    SupplierID: string
+    SupplierName: string
+    TotalPurchased: number
+    PurchaseCount: number
+}
+
+export interface ExportedCustomerStats {
+    CustomerID: string
+    CustomerName: string
+    TotalSpent: number
+    SaleCount: number
+}
+
+// 1. Low stock report
 export async function getLowStockReport(): Promise<LowStockReportItem[]> {
+    await checkReportPermission("reports:read_low_stock")
+    return getLowStockReportCached()
+}
+
+async function getLowStockReportCached(): Promise<LowStockReportItem[]> {
     "use cache"
     cacheTag("reports", "low-stock-report")
     cacheLife("minutes")
@@ -41,7 +77,13 @@ export async function getLowStockReport(): Promise<LowStockReportItem[]> {
     return products
 }
 
+// 2. Inventory valuation
 export async function getInventoryValuation(): Promise<ValuationReport> {
+    await checkReportPermission("reports:read_valuation")
+    return getInventoryValuationCached()
+}
+
+async function getInventoryValuationCached(): Promise<ValuationReport> {
     "use cache"
     cacheTag("reports", "inventory-valuation")
     cacheLife("minutes")
@@ -72,7 +114,7 @@ export async function getInventoryValuation(): Promise<ValuationReport> {
                 itemCount: acc.itemCount + qty,
             }
         },
-        { totalCost: 0, totalRetail: 0, itemCount: 0 }
+        { totalCost: 0, totalRetail: 0, itemCount: 0 },
     )
 
     return {
@@ -85,7 +127,13 @@ export async function getInventoryValuation(): Promise<ValuationReport> {
     }
 }
 
+// 3. Sales History
 export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
+    await checkReportPermission("reports:read_history")
+    return getSalesHistoryCached()
+}
+
+async function getSalesHistoryCached(): Promise<SalesHistoryItem[]> {
     "use cache"
     cacheTag("reports", "sales-history")
     cacheLife("minutes")
@@ -119,7 +167,6 @@ export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
         take: 50,
     })
 
-    // Explicitly define the expected structure to avoid 'any' and handle stale Prisma types
     interface TransactionWithRelations {
         id: string
         date: Date
@@ -132,8 +179,6 @@ export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
         }[]
     }
 
-    // Cast the result to the explicit structure.
-    // This is safe because the db query above ensures this shape, even if local Prisma types are stale.
     const safeTransactions = transactions as unknown as TransactionWithRelations[]
 
     return safeTransactions.map((t) => ({
@@ -151,8 +196,13 @@ export async function getSalesHistory(): Promise<SalesHistoryItem[]> {
     }))
 }
 
-// Calculate Profit & Loss based on SALES transactions
+// 4. Profit loss report
 export async function getProfitLossReport(startDate?: Date, endDate?: Date): Promise<ProfitLossSummary> {
+    await checkReportPermission("reports:read_history")
+    return getProfitLossReportCached(startDate, endDate)
+}
+
+async function getProfitLossReportCached(startDate?: Date, endDate?: Date): Promise<ProfitLossSummary> {
     "use cache"
     cacheTag("reports", "profit-loss")
     cacheLife("minutes")
@@ -187,7 +237,6 @@ export async function getProfitLossReport(startDate?: Date, endDate?: Date): Pro
         totalRevenue += Number(sale.total)
 
         for (const item of sale.items) {
-            // Use current product cost since historical cost snapshot is not available on TransactionItem
             const itemCost = Number(item.product.costPrice)
             totalCostOfGoodsSold += itemCost * item.quantity
         }
@@ -201,7 +250,13 @@ export async function getProfitLossReport(startDate?: Date, endDate?: Date): Pro
     }
 }
 
+// 5. Top selling products
 export async function getTopSellingProducts(limit = 10): Promise<TopProductItem[]> {
+    await checkReportPermission("reports:read_history")
+    return getTopSellingProductsCached(limit)
+}
+
+async function getTopSellingProductsCached(limit = 10): Promise<TopProductItem[]> {
     "use cache"
     cacheTag("reports", "top-selling")
     cacheLife("minutes")
@@ -249,13 +304,30 @@ export async function getTopSellingProducts(limit = 10): Promise<TopProductItem[
         .slice(0, limit)
 }
 
-// --- NEW REPORTS ---
-
+// 6. Refresh report data
 export async function refreshReportData() {
+    const session = await auth()
+    if (!session?.user) {
+        throw new Error("Unauthorized")
+    }
+    // Any report permission can refresh
+    const permissions = session.user.permissions || []
+    const canRefresh = permissions.some((p) =>
+        ["reports:read_low_stock", "reports:read_valuation", "reports:read_history"].includes(p),
+    )
+    if (!canRefresh) {
+        throw new Error("Forbidden")
+    }
     revalidateTag("reports", "max")
 }
 
+// 7. Supplier stats
 export async function getSupplierStats(limit = 10): Promise<SupplierStats[]> {
+    await checkReportPermission("reports:read_history")
+    return getSupplierStatsCached(limit)
+}
+
+async function getSupplierStatsCached(limit = 10): Promise<SupplierStats[]> {
     "use cache"
     cacheTag("reports", "suppliers")
     cacheLife("minutes")
@@ -307,7 +379,13 @@ export async function getSupplierStats(limit = 10): Promise<SupplierStats[]> {
     }, [])
 }
 
+// 8. Customer stats
 export async function getCustomerStats(limit = 10): Promise<CustomerStats[]> {
+    await checkReportPermission("reports:read_history")
+    return getCustomerStatsCached(limit)
+}
+
+async function getCustomerStatsCached(limit = 10): Promise<CustomerStats[]> {
     "use cache"
     cacheTag("reports", "customers")
     cacheLife("minutes")
@@ -359,7 +437,13 @@ export async function getCustomerStats(limit = 10): Promise<CustomerStats[]> {
     }, [])
 }
 
+// 9. Purchase history
 export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
+    await checkReportPermission("reports:read_history")
+    return getPurchaseHistoryCached()
+}
+
+async function getPurchaseHistoryCached(): Promise<SalesHistoryItem[]> {
     "use cache"
     cacheTag("reports", "purchase-history")
     cacheLife("minutes")
@@ -374,9 +458,7 @@ export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
         orderBy: { date: "desc" },
         take: 50,
     })
-    // Reuse SalesHistoryItem structure for simplicity or create new type if needed
-    // SalesHistoryItem keys: id, date, total, user, items
-    // We can map it similarly.
+
     return transactions.map((t) => ({
         id: t.id,
         date: t.date,
@@ -389,14 +471,16 @@ export async function getPurchaseHistory(): Promise<SalesHistoryItem[]> {
                 name: i.product?.name || "Unknown",
             },
         })),
-        // Add supplier info if needed in UI, but SalesHistoryItem might not have it.
-        // For now, let's stick to the interface.
     }))
 }
 
-// --- INSIGHTS & SUMMARIES ---
-
+// 10. Purchase summary
 export async function getPurchaseSummary(): Promise<PurchaseSummary> {
+    await checkReportPermission("reports:read_history")
+    return getPurchaseSummaryCached()
+}
+
+async function getPurchaseSummaryCached(): Promise<PurchaseSummary> {
     "use cache"
     cacheTag("reports", "purchases-summary")
     cacheLife("minutes")
@@ -417,7 +501,13 @@ export async function getPurchaseSummary(): Promise<PurchaseSummary> {
     }
 }
 
+// 11. Supplier summary
 export async function getSupplierSummary(): Promise<EntitySummary> {
+    await checkReportPermission("reports:read_history")
+    return getSupplierSummaryCached()
+}
+
+async function getSupplierSummaryCached(): Promise<EntitySummary> {
     "use cache"
     cacheTag("reports", "suppliers-summary")
     cacheLife("minutes")
@@ -456,7 +546,13 @@ export async function getSupplierSummary(): Promise<EntitySummary> {
     }
 }
 
+// 12. Customer summary
 export async function getCustomerSummary(): Promise<EntitySummary> {
+    await checkReportPermission("reports:read_history")
+    return getCustomerSummaryCached()
+}
+
+async function getCustomerSummaryCached(): Promise<EntitySummary> {
     "use cache"
     cacheTag("reports", "customers-summary")
     cacheLife("minutes")
@@ -493,4 +589,169 @@ export async function getCustomerSummary(): Promise<EntitySummary> {
         topPerformerName: topName,
         topPerformerValue: Number(topCustomer[0]?._sum.total || 0),
     }
+}
+
+// Export specific actions
+export async function getValuationReportForExport() {
+    await checkReportPermission("reports:read_valuation")
+    const valuation = await getInventoryValuation()
+    return valuation.products.map((p) => ({
+        SKU: p.sku,
+        Name: p.name,
+        StockQty: p.stockQty,
+        CostPrice: p.costPrice,
+        SalePrice: p.salePrice,
+        TotalCostValue: p.stockQty * p.costPrice,
+        TotalRetailValue: p.stockQty * p.salePrice,
+    }))
+}
+
+export async function getSalesHistoryForExport() {
+    await checkReportPermission("reports:read_history")
+    const transactions = await prisma.transaction.findMany({
+        where: { type: "SALE" },
+        include: {
+            user: { select: { name: true, email: true } },
+            items: { include: { product: { select: { name: true, sku: true } } } },
+            customer: true,
+        },
+        orderBy: { date: "desc" },
+    })
+
+    return transactions.map((t) => {
+        const itemsList = t.items
+            .map((i) => `${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`)
+            .join("; ")
+        return {
+            ID: t.id,
+            Date: t.date,
+            Total: Number(t.total),
+            User: t.user?.name || "Unknown",
+            Customer: t.customer?.name || "Walk-in Customer",
+            Items: itemsList,
+        }
+    })
+}
+
+export async function getPurchaseHistoryForExport() {
+    await checkReportPermission("reports:read_history")
+    const transactions = await prisma.transaction.findMany({
+        where: { type: "PURCHASE" },
+        include: {
+            user: { select: { name: true, email: true } },
+            items: { include: { product: { select: { name: true, sku: true } } } },
+            supplier: true,
+        },
+        orderBy: { date: "desc" },
+    })
+
+    return transactions.map((t) => {
+        const itemsList = t.items
+            .map((i) => `${i.product?.name || "Unknown"} (SKU: ${i.product?.sku || "N/A"}) x${i.quantity}`)
+            .join("; ")
+        return {
+            ID: t.id,
+            Date: t.date,
+            Total: Number(t.total),
+            User: t.user?.name || "Unknown",
+            Supplier: t.supplier?.name || "Unknown Supplier",
+            Items: itemsList,
+        }
+    })
+}
+
+export async function getSupplierStatsForExport(): Promise<ExportedSupplierStats[]> {
+    await checkReportPermission("reports:read_history")
+    const grouped = await prisma.transaction.groupBy({
+        by: ["supplierId"],
+        where: {
+            type: "PURCHASE",
+            supplierId: { not: null },
+        },
+        _sum: {
+            total: true,
+        },
+        _count: {
+            id: true,
+        },
+        orderBy: {
+            _sum: {
+                total: "desc",
+            },
+        },
+    })
+
+    const supplierIds = grouped.map((g) => g.supplierId).filter((id): id is string => id !== null)
+
+    const suppliers = await prisma.supplier.findMany({
+        where: {
+            id: { in: supplierIds },
+        },
+        select: {
+            id: true,
+            name: true,
+        },
+    })
+
+    const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]))
+
+    return grouped.reduce<ExportedSupplierStats[]>((acc, g) => {
+        if (g.supplierId) {
+            acc.push({
+                SupplierID: g.supplierId,
+                SupplierName: supplierMap.get(g.supplierId) || "Unknown",
+                TotalPurchased: Number(g._sum.total || 0),
+                PurchaseCount: g._count.id,
+            })
+        }
+        return acc
+    }, [])
+}
+
+export async function getCustomerStatsForExport(): Promise<ExportedCustomerStats[]> {
+    await checkReportPermission("reports:read_history")
+    const grouped = await prisma.transaction.groupBy({
+        by: ["customerId"],
+        where: {
+            type: "SALE",
+            customerId: { not: null },
+        },
+        _sum: {
+            total: true,
+        },
+        _count: {
+            id: true,
+        },
+        orderBy: {
+            _sum: {
+                total: "desc",
+            },
+        },
+    })
+
+    const customerIds = grouped.map((g) => g.customerId).filter((id): id is string => id !== null)
+
+    const customers = await prisma.customer.findMany({
+        where: {
+            id: { in: customerIds },
+        },
+        select: {
+            id: true,
+            name: true,
+        },
+    })
+
+    const customerMap = new Map(customers.map((c) => [c.id, c.name]))
+
+    return grouped.reduce<ExportedCustomerStats[]>((acc, g) => {
+        if (g.customerId) {
+            acc.push({
+                CustomerID: g.customerId,
+                CustomerName: customerMap.get(g.customerId) || "Unknown",
+                TotalSpent: Number(g._sum.total || 0),
+                SaleCount: g._count.id,
+            })
+        }
+        return acc
+    }, [])
 }

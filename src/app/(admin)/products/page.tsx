@@ -4,9 +4,11 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
+import { getAllProductsForExport, getProducts } from "@/actions/product"
 import type { ProductFilters as ProductFiltersType } from "@/actions/product"
 import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
+import { ExportButton } from "@/components/export-button"
 import { SearchInput } from "@/components/search-input"
 import { Button } from "@/components/ui/button"
 
@@ -33,8 +35,8 @@ export default async function ProductsPage({
     }>
 }) {
     const session = await auth()
-    if (!session) {
-        redirect("/login")
+    if (!session || !session.user.permissions?.includes("products:read")) {
+        redirect("/dashboard")
     }
 
     const { q, page, categories, brands, minPrice, maxPrice, inStock, archived } = await searchParams
@@ -49,15 +51,16 @@ export default async function ProductsPage({
         isArchived: archived === "true",
     }
 
-    const role = session.user.role || "CLERK"
-    const canManage_Products = role === "ADMIN" || role === "MANAGER"
+    const permissions = session.user.permissions || []
+    const canImport = permissions.includes("products:import")
+    const canCreate = permissions.includes("products:create")
 
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Products</h1>
                 <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
-                    {canManage_Products && (
+                    {canImport && (
                         <Link href="/products/import">
                             <Button variant="outline" className="gap-2 w-full sm:w-auto">
                                 <FileDown className="h-4 w-4" />
@@ -65,7 +68,11 @@ export default async function ProductsPage({
                             </Button>
                         </Link>
                     )}
-                    {canManage_Products && (
+                    <ExportButton
+                        filename="products_export"
+                        fetchData={getAllProductsForExport.bind(null, q, filters)}
+                    />
+                    {canCreate && (
                         <Link href="/products/new">
                             <Button className="gap-2 w-full sm:w-auto">
                                 <Plus className="h-4 w-4" />
@@ -87,7 +94,7 @@ export default async function ProductsPage({
                 key={JSON.stringify({ q, currentPage, filters })}
                 fallback={<DataTableSkeleton columnCount={6} rowCount={10} />}
             >
-                <ProductListWrapper query={q} page={currentPage} filters={filters} role={role} />
+                <ProductListWrapper query={q} page={currentPage} filters={filters} permissions={permissions} />
             </Suspense>
         </div>
     )

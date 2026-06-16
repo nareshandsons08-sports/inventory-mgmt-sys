@@ -1,19 +1,27 @@
+import dynamic from "next/dynamic"
 import Image from "next/image"
 import { memo } from "react"
+
 import { ProductActions } from "@/components/product-actions"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
 
+const StockAdjustmentDialog = dynamic(
+    () => import("@/components/StockAdjustmentDialog").then((m) => m.StockAdjustmentDialog),
+    { ssr: false },
+)
+
 interface ProductListRowProps {
     product: Product
     visibleColumns: Set<string>
-    role?: string
+    permissions?: string[]
     onDelete: () => void
+    onAdjust: (qtyChange: number) => void
 }
 
 export const ProductListRow = memo(
-    function ProductListRow({ product, visibleColumns, role, onDelete }: ProductListRowProps) {
+    function ProductListRow({ product, visibleColumns, permissions, onDelete, onAdjust }: ProductListRowProps) {
         return (
             <TableRow>
                 {visibleColumns.has("image") && (
@@ -26,6 +34,7 @@ export const ProductListRow = memo(
                                     fill
                                     className="object-cover"
                                     unoptimized
+                                    sizes="40px"
                                 />
                             </div>
                         ) : (
@@ -46,12 +55,26 @@ export const ProductListRow = memo(
                 {visibleColumns.has("salePrice") && (
                     <TableCell className="text-right">{formatCurrency(Number(product.salePrice))}</TableCell>
                 )}
-                {visibleColumns.has("stockQty") && <TableCell className="text-right">{product.stockQty}</TableCell>}
+                {visibleColumns.has("stockQty") && (
+                    <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                            <span>{product.stockQty}</span>
+                            {permissions?.includes("adjustments:create") && (
+                                <StockAdjustmentDialog
+                                    productId={product.id}
+                                    productName={product.name}
+                                    currentStock={product.stockQty}
+                                    onAdjust={onAdjust}
+                                />
+                            )}
+                        </div>
+                    </TableCell>
+                )}
                 {visibleColumns.has("actions") && (
                     <TableCell className="text-right">
                         <ProductActions
                             productId={product.id}
-                            role={role}
+                            permissions={permissions}
                             onDelete={onDelete}
                             isArchived={product.isArchived}
                         />
@@ -62,10 +85,10 @@ export const ProductListRow = memo(
     },
     (prev, next) => {
         return (
-            prev.role === next.role &&
+            prev.permissions?.join(",") === next.permissions?.join(",") &&
             prev.visibleColumns === next.visibleColumns &&
             prev.product.id === next.product.id &&
             new Date(prev.product.updatedAt).getTime() === new Date(next.product.updatedAt).getTime()
         )
-    }
+    },
 )

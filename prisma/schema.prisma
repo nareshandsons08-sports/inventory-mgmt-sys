@@ -13,18 +13,44 @@ model User {
   name      String
   email     String   @unique
   password  String   // Hashed
-  role      Role     @default(CLERK)
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   transactions Transaction[]
   adjustments  Adjustment[]
+  auditLogs    AuditLog[]
 }
 
-enum Role {
-  ADMIN
-  MANAGER
-  CLERK
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
 }
 
 model Product {
@@ -76,7 +102,7 @@ model Transaction {
   date      DateTime        @default(now())
   total     Decimal         @db.Decimal(10, 2)
   userId    String
-  user      User            @relation(fields: [userId], references: [id])
+  user      User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   
   items     TransactionItem[]
 
@@ -130,12 +156,25 @@ model Adjustment {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   reason    String
   qtyChange Int      // Positive or negative
   createdAt DateTime @default(now())
 
   @@index([productId])
   @@index([userId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String   // JSON string containing what changed
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
   @@index([createdAt])
 }

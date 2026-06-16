@@ -14,58 +14,66 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface ProductActionsProps {
     productId: string
-    role?: string
+    permissions?: string[]
     onDelete?: () => void
     isArchived?: boolean
 }
 
-export function ProductActions({ productId, role, onDelete, isArchived }: ProductActionsProps) {
+export function ProductActions({ productId, permissions, onDelete, isArchived }: ProductActionsProps) {
     const [isPending, startTransition] = useTransition()
-    const canManage = role === "ADMIN" || role === "MANAGER"
+    const canEdit = permissions?.includes("products:update") ?? false
+    const canArchive = permissions?.includes("products:archive") ?? false
+    const canDelete = permissions?.includes("products:delete") ?? false
+    const canManage = canEdit || canArchive || canDelete
 
     const handleArchive = () => {
-        if (confirm("Are you sure you want to archive this product?")) {
-            startTransition(async () => {
-                const result = await archiveProduct(productId)
-                if (result?.error) {
-                    toast.error(result.error)
-                } else {
-                    toast.success("Product archived")
-                    if (onDelete) onDelete()
-                }
-            })
-        }
+        startTransition(async () => {
+            const result = await archiveProduct(productId)
+            if (result?.error) {
+                toast.error(result.error)
+            } else {
+                toast.success("Product archived")
+                if (onDelete) onDelete()
+            }
+        })
     }
 
     const handleRestore = () => {
-        if (confirm("Are you sure you want to restore this product?")) {
-            startTransition(async () => {
-                const result = await unarchiveProduct(productId)
-                if (result?.error) {
-                    toast.error(result.error)
-                } else {
-                    toast.success("Product restored")
-                    if (onDelete) onDelete()
-                }
-            })
-        }
+        startTransition(async () => {
+            const result = await unarchiveProduct(productId)
+            if (result?.error) {
+                toast.error(result.error)
+            } else {
+                toast.success("Product restored")
+                if (onDelete) onDelete()
+            }
+        })
     }
 
     const handleDelete = () => {
-        if (confirm("Are you sure you want to permanently delete this product? This action cannot be undone.")) {
-            startTransition(async () => {
-                const result = await deleteProduct(productId)
-                if (result?.error) {
-                    toast.error(result.error)
-                } else {
-                    toast.success("Product deleted permanently")
-                    if (onDelete) onDelete()
-                }
-            })
-        }
+        startTransition(async () => {
+            const result = await deleteProduct(productId)
+            if (result?.error) {
+                toast.error(result.error)
+            } else {
+                toast.success("Product deleted permanently")
+                if (onDelete) onDelete()
+            }
+        })
     }
 
     if (!canManage) {
@@ -75,45 +83,119 @@ export function ProductActions({ productId, role, onDelete, isArchived }: Produc
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
                     <MoreHorizontal className="h-4 w-4" />
                     <span className="sr-only">Open menu</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <Link href={`/products/${productId}/edit`}>
-                    <DropdownMenuItem className="cursor-pointer">
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                    </DropdownMenuItem>
-                </Link>
-                <DropdownMenuSeparator />
+                {canEdit && (
+                    <>
+                        <Link href={`/products/${productId}/edit`}>
+                            <DropdownMenuItem className="cursor-pointer">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
+                        </Link>
+                        {(canArchive || canDelete) && <DropdownMenuSeparator />}
+                    </>
+                )}
                 {isArchived ? (
                     <>
-                        <DropdownMenuItem onClick={handleRestore} className="cursor-pointer" disabled={isPending}>
-                            <Undo2 className="mr-2 h-4 w-4" />
-                            Restore
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            onClick={handleDelete}
-                            className="text-destructive focus:text-destructive cursor-pointer"
-                            disabled={isPending}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Permanently
-                        </DropdownMenuItem>
+                        {canArchive && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem
+                                        onSelect={(e) => e.preventDefault()}
+                                        className="cursor-pointer"
+                                        disabled={isPending}
+                                    >
+                                        <Undo2 className="mr-2 h-4 w-4" />
+                                        Restore
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Restore Product?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to restore this product back to the active catalog?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleRestore}>
+                                            Restore
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                        {canArchive && canDelete && <DropdownMenuSeparator />}
+                        {canDelete && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem
+                                        onSelect={(e) => e.preventDefault()}
+                                        className="text-destructive focus:text-destructive cursor-pointer"
+                                        disabled={isPending}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Permanently
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete this product from the database.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleDelete}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                     </>
                 ) : (
-                    <DropdownMenuItem
-                        onClick={handleArchive}
-                        className="text-destructive focus:text-destructive cursor-pointer"
-                        disabled={isPending}
-                    >
-                        <Archive className="mr-2 h-4 w-4" />
-                        Archive
-                    </DropdownMenuItem>
+                    canArchive && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                    disabled={isPending}
+                                >
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    Archive
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Archive Product?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Are you sure you want to archive this product? Archived products cannot be added to new transactions.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleArchive}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        Archive
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )
                 )}
             </DropdownMenuContent>
         </DropdownMenu>

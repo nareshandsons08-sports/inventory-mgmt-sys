@@ -2,8 +2,17 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
+import {
+    getCustomerStatsForExport,
+    getLowStockReport,
+    getPurchaseHistoryForExport,
+    getSalesHistoryForExport,
+    getSupplierStatsForExport,
+    getValuationReportForExport,
+} from "@/actions/reports"
 import { auth } from "@/auth"
 import { DataTableSkeleton } from "@/components/data-table-skeleton"
+import { ExportButton } from "@/components/export-button"
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { ReportTabs } from "./_components/client-tabs"
@@ -21,14 +30,89 @@ interface ReportsPageProps {
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     const session = await auth()
-    const role = session?.user?.role
+    if (!session?.user) {
+        redirect("/dashboard")
+    }
 
-    if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    const permissions = session.user.permissions || []
+    const hasLowStock = permissions.includes("reports:low_stock")
+    const hasValuation = permissions.includes("reports:valuation")
+    const hasHistory = permissions.includes("reports:history")
+
+    const allowedTabs = [
+        { value: "overview", label: "Overview", allowed: hasHistory },
+        { value: "sales", label: "Sales", allowed: hasHistory },
+        { value: "purchases", label: "Purchases", allowed: hasHistory },
+        { value: "suppliers", label: "Suppliers", allowed: hasHistory },
+        { value: "customers", label: "Customers", allowed: hasHistory },
+        { value: "valuation", label: "Valuation", allowed: hasValuation },
+        { value: "low-stock", label: "Low Stock", allowed: hasLowStock },
+    ].filter((t) => t.allowed)
+
+    if (allowedTabs.length === 0) {
         redirect("/dashboard")
     }
 
     const resolvedParams = await searchParams
-    const activeTab = (resolvedParams.tab as string) || "overview"
+    const activeTab = (resolvedParams.tab as string) || allowedTabs[0].value
+
+    if (!allowedTabs.some((t) => t.value === activeTab)) {
+        redirect(`/reports?tab=${allowedTabs[0].value}`)
+    }
+
+    let exportButton = null
+    switch (activeTab) {
+        case "low-stock":
+            exportButton = (
+                <ExportButton filename="low_stock_report" fetchData={getLowStockReport} label="Export Low Stock" />
+            )
+            break
+        case "valuation":
+            exportButton = (
+                <ExportButton
+                    filename="inventory_valuation_report"
+                    fetchData={getValuationReportForExport}
+                    label="Export Valuation"
+                />
+            )
+            break
+        case "sales":
+            exportButton = (
+                <ExportButton
+                    filename="sales_history_report"
+                    fetchData={getSalesHistoryForExport}
+                    label="Export Sales History"
+                />
+            )
+            break
+        case "purchases":
+            exportButton = (
+                <ExportButton
+                    filename="purchase_history_report"
+                    fetchData={getPurchaseHistoryForExport}
+                    label="Export Purchase History"
+                />
+            )
+            break
+        case "suppliers":
+            exportButton = (
+                <ExportButton
+                    filename="supplier_stats_report"
+                    fetchData={getSupplierStatsForExport}
+                    label="Export Supplier Stats"
+                />
+            )
+            break
+        case "customers":
+            exportButton = (
+                <ExportButton
+                    filename="customer_stats_report"
+                    fetchData={getCustomerStatsForExport}
+                    label="Export Customer Stats"
+                />
+            )
+            break
+    }
 
     let tabContent = null
 
@@ -129,52 +213,32 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
             break
         }
         default: {
-            // Fallback to overview or empty if invalid tab
-            const { OverviewWrapper } = await import("./_components/tabs/overview")
-            tabContent = (
-                <TabsContent value="overview" className="space-y-4">
-                    <Suspense fallback={<ReportCardsSkeleton />}>
-                        <OverviewWrapper />
-                    </Suspense>
-                </TabsContent>
-            )
+            // Fallback to first allowed tab
+            redirect(`/reports?tab=${allowedTabs[0].value}`)
         }
     }
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
-                <RefreshButton />
+                <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
+                    {exportButton}
+                    <RefreshButton />
+                </div>
             </div>
 
             <Suspense fallback={<ReportCardsSkeleton />}>
                 <ReportCardsWrapper />
             </Suspense>
 
-            <ReportTabs defaultValue="overview">
+            <ReportTabs defaultValue={allowedTabs[0].value}>
                 <TabsList className="flex-wrap h-auto">
-                    <TabsTrigger className="cursor-pointer" value="overview">
-                        Overview
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="sales">
-                        Sales
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="purchases">
-                        Purchases
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="suppliers">
-                        Suppliers
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="customers">
-                        Customers
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="valuation">
-                        Valuation
-                    </TabsTrigger>
-                    <TabsTrigger className="cursor-pointer" value="low-stock">
-                        Low Stock
-                    </TabsTrigger>
+                    {allowedTabs.map((tab) => (
+                        <TabsTrigger key={tab.value} className="cursor-pointer" value={tab.value}>
+                            {tab.label}
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
                 {tabContent}

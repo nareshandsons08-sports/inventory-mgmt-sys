@@ -12,8 +12,10 @@ import {
     getSupplierSummary,
     getTopSellingProducts,
 } from "@/actions/reports"
+import { auth } from "@/auth"
 import { formatCurrency } from "@/lib/utils"
 import type { CustomerStats, SupplierStats } from "@/types"
+
 import { LowStockTable } from "./low-stock-table"
 import { ProfitLossCard } from "./profit-loss-card"
 import { ReportCards } from "./report-cards"
@@ -112,12 +114,35 @@ export async function PurchaseSummaryWrapper() {
 }
 
 export async function ReportCardsWrapper() {
-    const [lowStockProducts, { params: valuation, products: allProducts }] = await Promise.all([
-        getLowStockReport(),
-        getInventoryValuation(),
-    ])
+    const session = await auth()
+    const permissions = session?.user?.permissions || []
 
-    return <ReportCards valuation={valuation} lowStockCount={lowStockProducts.length} totalSkus={allProducts.length} />
+    const hasLowStock = permissions.includes("reports:low_stock")
+    const hasValuation = permissions.includes("reports:valuation")
+
+    let lowStockCount = 0
+    if (hasLowStock) {
+        const lowStockProducts = await getLowStockReport()
+        lowStockCount = lowStockProducts.length
+    }
+
+    let valuation = { totalCost: 0, totalRetail: 0, itemCount: 0 }
+    let totalSkus = 0
+    if (hasValuation) {
+        const valData = await getInventoryValuation()
+        valuation = valData.params
+        totalSkus = valData.products.length
+    }
+
+    return (
+        <ReportCards
+            valuation={valuation}
+            lowStockCount={lowStockCount}
+            totalSkus={totalSkus}
+            showValuation={hasValuation}
+            showLowStock={hasLowStock}
+        />
+    )
 }
 
 export async function SalesHistoryTableWrapper() {

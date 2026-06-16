@@ -1,7 +1,9 @@
 "use client"
 
 import { MoreHorizontal, Trash2 } from "lucide-react"
+import dynamic from "next/dynamic"
 import { toast } from "sonner"
+
 import { deleteUser } from "@/actions/user"
 import {
     AlertDialog,
@@ -22,11 +24,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChangePasswordDialog } from "./change-password-dialog"
+import type { User } from "@/types"
 
-export function UserActions({ userId, userName }: { userId: string; userName: string }) {
+const EditUserDialog = dynamic(() => import("./edit-user-dialog").then((m) => m.EditUserDialog), { ssr: false })
+const ChangePasswordDialog = dynamic(() => import("./change-password-dialog").then((m) => m.ChangePasswordDialog), {
+    ssr: false,
+})
+
+export function UserActions({ user, roles }: { user: User; roles: { id: string; name: string }[] }) {
     async function handleDelete() {
-        const res = await deleteUser(userId)
+        const res = await deleteUser(user.id)
         if (res?.error) {
             toast.error(res.error)
         } else {
@@ -36,9 +43,10 @@ export function UserActions({ userId, userName }: { userId: string; userName: st
 
     return (
         <div className="flex items-center gap-2">
+            <EditUserDialog user={user} roles={roles} />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
+                    <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
@@ -47,7 +55,7 @@ export function UserActions({ userId, userName }: { userId: string; userName: st
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <div className="p-1">
-                        <ChangePasswordDialog userId={userId} userName={userName} isAdminReset={true} />
+                        <ChangePasswordDialog userId={user.id} userName={user.name} isAdminReset={true} />
                     </div>
                     <DropdownMenuSeparator />
                     <AlertDialog>
@@ -55,7 +63,7 @@ export function UserActions({ userId, userName }: { userId: string; userName: st
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                                className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete User
